@@ -30,8 +30,13 @@ public sealed class RefreshPortfolioPricesCommandHandler(
             return Error.NotFound("Portfolio.NotFound", $"Portfolio with ID '{command.Id}' was not found.");
         }
 
-        var entries = await portfolioEntryRepository.GetByPortfolioIdAsync(command.Id, cancellationToken);
         var now = DateTime.UtcNow;
+        if (portfolio.LastPriceRefreshAt?.Date == now.Date)
+        {
+            return Error.Conflict("Portfolio.PricesAlreadyRefreshedToday", "Los precios de este portfolio ya se actualizaron hoy. Inténtalo de nuevo mañana.");
+        }
+
+        var entries = await portfolioEntryRepository.GetByPortfolioIdAsync(command.Id, cancellationToken);
         var holdings = portfolio.GetHoldingsAsOf(entries, now);
 
         var mappable = holdings.Where(h => !string.IsNullOrWhiteSpace(h.CryptoCurrency.CoinGeckoId)).ToList();
@@ -65,8 +70,11 @@ public sealed class RefreshPortfolioPricesCommandHandler(
         if (newEntries.Count > 0)
         {
             await portfolioEntryRepository.AddRangeAsync(newEntries, cancellationToken);
-            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
+
+        portfolio.LastPriceRefreshAt = now;
+        portfolioRepository.Update(portfolio);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Refreshed {Count} holdings for portfolio {PortfolioId}", updated.Count, portfolio.Id);
 

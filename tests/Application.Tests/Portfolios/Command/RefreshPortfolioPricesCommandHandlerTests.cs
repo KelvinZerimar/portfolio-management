@@ -113,7 +113,7 @@ public class RefreshPortfolioPricesCommandHandlerTests
             .Which.Reason.Should().Be("NoCoinGeckoIdMapped");
         await _coinGeckoClient.Received(1).GetEurPricesAsync(
             Arg.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0), Arg.Any<CancellationToken>());
-        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -149,6 +149,49 @@ public class RefreshPortfolioPricesCommandHandlerTests
         result.Value.Skipped.Should().BeEmpty();
         await _coinGeckoClient.Received(1).GetEurPricesAsync(
             Arg.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0), Arg.Any<CancellationToken>());
+        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WithSuccessfulRefresh_SetsLastPriceRefreshAtOnPortfolio()
+    {
+        var portfolio = Portfolio.Create(UserId, "My Portfolio", string.Empty);
+        _portfolioRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(portfolio);
+        _portfolioEntryRepository.GetByPortfolioIdAsync(1, Arg.Any<CancellationToken>()).Returns([]);
+
+        await CreateHandler().Handle(new RefreshPortfolioPricesCommand(1), CancellationToken.None);
+
+        portfolio.LastPriceRefreshAt.Should().NotBeNull();
+        portfolio.LastPriceRefreshAt!.Value.Date.Should().Be(DateTime.UtcNow.Date);
+        _portfolioRepository.Received(1).Update(portfolio);
+    }
+
+    [Fact]
+    public async Task Handle_WhenAlreadyRefreshedToday_ReturnsConflictWithoutCallingCoinGecko()
+    {
+        var portfolio = Portfolio.Create(UserId, "My Portfolio", string.Empty);
+        portfolio.LastPriceRefreshAt = DateTime.UtcNow;
+        _portfolioRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(portfolio);
+
+        var result = await CreateHandler().Handle(new RefreshPortfolioPricesCommand(1), CancellationToken.None);
+
+        result.IsError.Should().BeTrue();
+        result.FirstError.Code.Should().Be("Portfolio.PricesAlreadyRefreshedToday");
+        await _coinGeckoClient.DidNotReceive().GetEurPricesAsync(
+            Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
         await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenLastRefreshWasOnAPreviousDay_AllowsRefreshingAgain()
+    {
+        var portfolio = Portfolio.Create(UserId, "My Portfolio", string.Empty);
+        portfolio.LastPriceRefreshAt = DateTime.UtcNow.AddDays(-1);
+        _portfolioRepository.GetByIdAsync(1, Arg.Any<CancellationToken>()).Returns(portfolio);
+        _portfolioEntryRepository.GetByPortfolioIdAsync(1, Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = await CreateHandler().Handle(new RefreshPortfolioPricesCommand(1), CancellationToken.None);
+
+        result.IsError.Should().BeFalse();
     }
 }

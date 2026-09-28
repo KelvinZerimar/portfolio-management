@@ -12,6 +12,7 @@ public sealed class Portfolio : Entity
     public string Description { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public DateTime? LastPriceRefreshAt { get; set; }
 
     // Property navigation for related PortfolioEntry entities
     public List<PortfolioEntry> Entries { get; set; } = new List<PortfolioEntry>();
