@@ -17,6 +17,7 @@ import {
   type PortfolioHoldingsResponse,
   type PortfolioResponse,
   type PortfolioValueResponse,
+  type RefreshPortfolioPricesResponse,
   type RegisterUserRequest,
   type RegisterUserResponse,
   type UpdateCryptoCurrencyRequest,
@@ -81,6 +82,11 @@ export const portfolioService = {
         // the numeric enum value back to that name.
         params: { groupBy: GroupBy[groupBy], date },
       })
+      .then((r) => r.data),
+
+  refreshPrices: (id: number) =>
+    api
+      .post<RefreshPortfolioPricesResponse>(`/Portfolio/${id}/refresh-prices`)
       .then((r) => r.data),
 };
 

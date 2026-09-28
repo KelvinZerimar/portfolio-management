@@ -1,11 +1,11 @@
 // Shared formatting so every ledger figure (table, charts, alerts) renders identically.
-// Currency is assumed USD: the backend stores a bare decimal PricePerUnit with no
-// currency unit, and USD is the de facto quoting currency for manually-logged crypto
-// prices. Revisit if the product ever supports another quote currency.
+// Currency is assumed EUR: the backend stores a bare decimal PricePerUnit with no
+// currency unit, manually-logged prices are entered in EUR, and the CoinGecko price
+// refresh also quotes in EUR. Revisit if the product ever supports another quote currency.
 
 const currencyFormatter = new Intl.NumberFormat("es-ES", {
   style: "currency",
-  currency: "USD",
+  currency: "EUR",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });

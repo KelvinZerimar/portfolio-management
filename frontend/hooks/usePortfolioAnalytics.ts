@@ -1,6 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { portfolioService } from "@/services/api";
 import type { PortfolioAllocationGroupBy } from "@/types";
+import { portfolioEntryKeys } from "./usePortfolioEntries";
 import { portfolioKeys } from "./usePortfolios";
 
 export function usePortfolioValue(id: number, date?: string) {
@@ -36,5 +37,20 @@ export function usePortfolioAllocation(
     queryKey: [...portfolioKeys.detail(id), "allocation", groupBy, date] as const,
     queryFn: () => portfolioService.getAllocation(id, groupBy, date),
     enabled: id > 0,
+  });
+}
+
+// Writes new PortfolioEntry rows priced at CoinGecko's latest quote, so every
+// analytics view keyed off portfolioKeys.detail(id) (value/history/holdings/allocation)
+// and the raw entry list both need invalidating.
+export function useRefreshPortfolioPrices(id: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => portfolioService.refreshPrices(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: portfolioKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: portfolioEntryKeys.lists() });
+    },
   });
 }

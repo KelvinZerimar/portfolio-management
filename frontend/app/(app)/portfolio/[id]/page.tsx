@@ -6,6 +6,7 @@ import { Check, X } from "lucide-react";
 import { useCryptoCurrencies } from "@/hooks/useCryptoCurrencies";
 import { useExchanges } from "@/hooks/useExchanges";
 import { usePortfolio } from "@/hooks/usePortfolios";
+import { useRefreshPortfolioPrices } from "@/hooks/usePortfolioAnalytics";
 import {
   useCreatePortfolioEntry,
   useDeletePortfolioEntry,
@@ -60,6 +61,7 @@ export default function PortfolioDetailPage({
 
   const createMutation = useCreatePortfolioEntry();
   const deleteMutation = useDeletePortfolioEntry(portfolioId);
+  const refreshMutation = useRefreshPortfolioPrices(portfolioId);
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [cryptoCurrencyId, setCryptoCurrencyId] = useState("");
@@ -132,9 +134,34 @@ export default function PortfolioDetailPage({
         <Link href="/portfolio" className="text-xs text-ink-muted hover:underline">
           ← Portfolios
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">{portfolio?.name ?? "Portfolio"}</h1>
-        {portfolio?.description && (
-          <p className="text-sm text-ink-muted">{portfolio.description}</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">{portfolio?.name ?? "Portfolio"}</h1>
+            {portfolio?.description && (
+              <p className="text-sm text-ink-muted">{portfolio.description}</p>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => refreshMutation.mutate()}
+            disabled={refreshMutation.isPending}
+          >
+            {refreshMutation.isPending ? "Actualizando precios…" : "Actualizar precios"}
+          </Button>
+        </div>
+        {refreshMutation.isError && (
+          <p role="alert" className="mt-2 text-sm text-accent">
+            {getApiErrorMessage(refreshMutation.error) ?? "No se pudieron actualizar los precios."}
+          </p>
+        )}
+        {refreshMutation.isSuccess && (
+          <p className="mt-2 text-sm text-brand">
+            {refreshMutation.data.updated.length === 0 && refreshMutation.data.skipped.length === 0
+              ? "Este portfolio no tiene activos que actualizar."
+              : `Precios actualizados para ${refreshMutation.data.updated.length} activo(s).`}
+            {refreshMutation.data.skipped.length > 0 &&
+              ` ${refreshMutation.data.skipped.length} omitido(s) (sin id de CoinGecko o sin precio disponible).`}
+          </p>
         )}
       </div>
 

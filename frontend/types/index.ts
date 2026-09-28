@@ -196,3 +196,27 @@ export interface PortfolioAllocationResponse {
   groupBy: PortfolioAllocationGroupBy;
   items: PortfolioAllocationItemResponse[];
 }
+
+// ---------- Portfolio price refresh ----------
+
+export interface RefreshedHoldingItemResponse {
+  cryptoCurrencyId: number;
+  symbol: string;
+  exchangeId: number;
+  quantity: number;
+  previousPrice: number;
+  newPrice: number;
+}
+
+export interface SkippedHoldingItemResponse {
+  cryptoCurrencyId: number;
+  symbol: string;
+  reason: string;
+}
+
+export interface RefreshPortfolioPricesResponse {
+  portfolioId: number;
+  refreshedAt: string;
+  updated: RefreshedHoldingItemResponse[];
+  skipped: SkippedHoldingItemResponse[];
+}
