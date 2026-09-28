@@ -14,5 +14,6 @@
 </Folder>
 <Folder Name="/tests/">
 <Project Path="tests/Domain.Tests/Domain.Tests.csproj" />
+<Project Path="tests/Application.Tests/Application.Tests.csproj" />
 </Folder>
 </Solution>

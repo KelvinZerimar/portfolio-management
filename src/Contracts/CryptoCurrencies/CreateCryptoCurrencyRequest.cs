@@ -5,4 +5,5 @@ public sealed class CreateCryptoCurrencyRequest
 {
     public string Symbol { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? CoinGeckoId { get; set; }
 }

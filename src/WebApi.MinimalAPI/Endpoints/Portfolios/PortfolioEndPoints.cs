@@ -101,6 +101,15 @@ public static class PortfolioEndPoints
            .Produces(404)
            .Produces<List<Error>>(400);
 
+        bases.MapPost("{id:long}/refresh-prices", async (ISender mediatr, long id) =>
+        {
+            var result = await mediatr.Send(new RefreshPortfolioPricesCommand(id));
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
+        })
+           .Produces<RefreshPortfolioPricesResponse>()
+           .Produces(404)
+           .Produces<List<Error>>(400);
+
         return app;
     }
 }

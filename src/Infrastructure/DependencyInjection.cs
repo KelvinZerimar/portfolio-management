@@ -22,6 +22,7 @@ using Application.Users.Interfaces;
 using Application.Exchanges.Interfaces;
 using Application.CryptoCurrencies.Interfaces;
 using Application.PortfolioEntries.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
 
@@ -85,6 +86,16 @@ public static class DependencyInjection
 
     private static IServiceCollection AddAdapters(this IServiceCollection services)
     {
+        services.AddHttpClient<ICoinGeckoClient, CoinGeckoClient>((sp, client) =>
+        {
+            var options = sp.GetRequiredService<IOptions<CoinGeckoOptions>>().Value;
+            client.BaseAddress = new Uri(options.BaseUrl);
+            if (!string.IsNullOrEmpty(options.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add("x-cg-demo-api-key", options.ApiKey);
+            }
+        });
+
         return services;
     }
 
@@ -114,6 +125,12 @@ public static class DependencyInjection
         services
             .AddOptions<JwtOptions>()
             .Bind(configuration.GetRequiredSection(JwtOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddOptions<CoinGeckoOptions>()
+            .Bind(configuration.GetRequiredSection(CoinGeckoOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 

@@ -33,6 +33,7 @@ public sealed class UpdateCryptoCurrencyCommandHandler(
 
         cryptoCurrency.Symbol = request.Symbol;
         cryptoCurrency.Name = request.Name;
+        cryptoCurrency.CoinGeckoId = request.CoinGeckoId;
 
         cryptoCurrencyRepository.Update(cryptoCurrency);
         await unitOfWork.SaveChangesAsync(cancellationToken);
