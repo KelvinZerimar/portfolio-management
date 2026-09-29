@@ -25,15 +25,16 @@ public static class CryptoCurrencyEndpoints
         bases.MapPost("/", async (ISender mediatr, CreateCryptoCurrencyRequest request) =>
         {
             var result = await mediatr.Send(new CreateCryptoCurrencyCommand(request));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<CreateCryptoCurrencyResponse>()
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapGet("/", async (ISender mediatr, [AsParameters] PaginatorRequest paginator) =>
         {
             var result = await mediatr.Send(new GetCryptoCurrenciesQuery(paginator));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<PaginatorResponse<CryptoCurrencyResponse>>()
            .Produces<List<Error>>(400);
@@ -54,6 +55,7 @@ public static class CryptoCurrencyEndpoints
         })
            .Produces<UpdateCryptoCurrencyResponse>()
            .Produces(404)
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapDelete("{id:long}", async (ISender mediatr, long id) =>

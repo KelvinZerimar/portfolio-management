@@ -24,17 +24,16 @@ public static class UserEndpoints
         bases.MapPost("register", async (ISender mediatr, RegisterUserRequest request) =>
         {
             var result = await mediatr.Send(new RegisterUserCommand(request));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<RegisterUserResponse>()
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapPost("login", async (ISender mediatr, LoginUserRequest request) =>
         {
             var result = await mediatr.Send(new LoginUserQuery(request));
-            return result.Match(
-                Results.Ok,
-                errors => errors[0].Type == ErrorType.Unauthorized ? Results.Unauthorized() : Results.BadRequest(errors));
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<LoginUserResponse>()
            .Produces(401);

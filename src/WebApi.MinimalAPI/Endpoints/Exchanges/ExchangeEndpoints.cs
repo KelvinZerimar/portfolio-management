@@ -25,15 +25,16 @@ public static class ExchangeEndpoints
         bases.MapPost("/", async (ISender mediatr, CreateExchangeRequest request) =>
         {
             var result = await mediatr.Send(new CreateExchangeCommand(request));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<CreateExchangeResponse>()
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapGet("/", async (ISender mediatr, [AsParameters] PaginatorRequest paginator) =>
         {
             var result = await mediatr.Send(new GetExchangesQuery(paginator));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<PaginatorResponse<ExchangeResponse>>()
            .Produces<List<Error>>(400);
@@ -54,6 +55,7 @@ public static class ExchangeEndpoints
         })
            .Produces<UpdateExchangeResponse>()
            .Produces(404)
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapDelete("{id:long}", async (ISender mediatr, long id) =>

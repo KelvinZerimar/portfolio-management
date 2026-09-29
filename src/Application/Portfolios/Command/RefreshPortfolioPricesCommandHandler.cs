@@ -46,7 +46,14 @@ public sealed class RefreshPortfolioPricesCommandHandler(
             .ToList();
 
         var coinGeckoIds = mappable.Select(h => h.CryptoCurrency.CoinGeckoId!).Distinct().ToList();
-        var prices = await coinGeckoClient.GetEurPricesAsync(coinGeckoIds, cancellationToken);
+        var pricesResult = await coinGeckoClient.GetEurPricesAsync(coinGeckoIds, cancellationToken);
+        if (pricesResult.IsError)
+        {
+            logger.LogWarning("Failed to refresh prices for portfolio {PortfolioId}: {Error}", portfolio.Id, pricesResult.FirstError.Code);
+            return pricesResult.Errors;
+        }
+
+        var prices = pricesResult.Value;
 
         var updated = new List<RefreshedHoldingItem>();
         var newEntries = new List<PortfolioEntry>();

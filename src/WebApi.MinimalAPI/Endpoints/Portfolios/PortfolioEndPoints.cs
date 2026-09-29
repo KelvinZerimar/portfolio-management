@@ -25,15 +25,16 @@ public static class PortfolioEndPoints
         bases.MapPost("/", async (ISender mediatr, CreatePortfolioRequest request) =>
         {
             var result = await mediatr.Send(new CreatePortfolioCommand(request));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<CreatePortfolioResponse>()
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapGet("/", async (ISender mediatr, [AsParameters] PaginatorRequest paginator) =>
         {
             var result = await mediatr.Send(new GetPortfoliosQuery(paginator));
-            return result.Match(Results.Ok, Results.BadRequest);
+            return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<PaginatorResponse<PortfolioResponse>>()
            .Produces<List<Error>>(400);
@@ -54,6 +55,7 @@ public static class PortfolioEndPoints
         })
            .Produces<UpdatePortfolioResponse>()
            .Produces(404)
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         bases.MapDelete("{id:long}", async (ISender mediatr, long id) =>
@@ -108,6 +110,7 @@ public static class PortfolioEndPoints
         })
            .Produces<RefreshPortfolioPricesResponse>()
            .Produces(404)
+           .Produces(409)
            .Produces<List<Error>>(400);
 
         return app;
