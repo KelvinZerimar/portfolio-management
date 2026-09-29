@@ -32,6 +32,7 @@ public sealed class GetPortfolioHoldingsQueryHandler(
                 e.CryptoCurrencyId,
                 e.CryptoCurrency.Symbol,
                 e.CryptoCurrency.Name,
+                e.CryptoCurrency.Image,
                 e.ExchangeId,
                 e.Exchange.Name,
                 e.Quantity,

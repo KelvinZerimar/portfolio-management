@@ -14,6 +14,7 @@ internal sealed class CryptoCurrencyConfiguration : IEntityTypeConfiguration<Cry
         builder.Property(c => c.Symbol).IsRequired().HasMaxLength(20);
         builder.Property(c => c.Name).IsRequired().HasMaxLength(100);
         builder.Property(c => c.CoinGeckoId).HasMaxLength(100);
+        builder.Property(c => c.Image).HasMaxLength(500);
         builder.Property(c => c.CreatedAt).IsRequired();
 
         builder.HasIndex(c => c.Symbol).IsUnique();

@@ -27,7 +27,7 @@ public sealed class CreateCryptoCurrencyCommandHandler(
             return Error.Conflict("CryptoCurrency.AlreadyExists", $"A crypto currency with the symbol '{request.Symbol}' already exists.");
         }
 
-        var newCryptoCurrency = CryptoCurrency.Create(request.Symbol, request.Name, request.CoinGeckoId);
+        var newCryptoCurrency = CryptoCurrency.Create(request.Symbol, request.Name, request.CoinGeckoId, request.Image);
 
         await cryptoCurrencyRepository.AddAsync(newCryptoCurrency, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);

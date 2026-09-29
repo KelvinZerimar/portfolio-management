@@ -5,6 +5,7 @@ public sealed record PortfolioHoldingItemResponse(
     long CryptoCurrencyId,
     string CryptoCurrencySymbol,
     string CryptoCurrencyName,
+    string? CryptoCurrencyImage,
     long ExchangeId,
     string ExchangeName,
     decimal Quantity,

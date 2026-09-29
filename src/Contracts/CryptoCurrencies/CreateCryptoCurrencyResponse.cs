@@ -6,5 +6,6 @@ public sealed record CreateCryptoCurrencyResponse(
     string Symbol,
     string Name,
     string? CoinGeckoId,
+    string? Image,
     DateTime CreatedAt
     );
