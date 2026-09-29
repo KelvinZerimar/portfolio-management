@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useAppStore } from "@/store/useAppStore";
 import { AlertsStrip } from "@/components/dashboard/AlertsStrip";
 import { AllocationChart } from "@/components/dashboard/AllocationChart";
+import { AssetSummaryCards } from "@/components/dashboard/AssetSummaryCards";
 import { buttonClassName } from "@/components/ui/Button";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { HoldingsTable } from "@/components/dashboard/HoldingsTable";
@@ -94,6 +95,8 @@ export default function DashboardPage() {
       </div>
 
       <AlertsStrip holdings={holdings} />
+
+      <AssetSummaryCards holdings={holdings} />
 
       <div className="grid gap-6 md:grid-cols-[7fr_3fr]">
         {historyError ? (

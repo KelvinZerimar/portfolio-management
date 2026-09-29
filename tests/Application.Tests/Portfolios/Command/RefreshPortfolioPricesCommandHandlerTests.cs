@@ -41,6 +41,8 @@ public class RefreshPortfolioPricesCommandHandlerTests
     public RefreshPortfolioPricesCommandHandlerTests()
     {
         _currentUserProvider.UserId.Returns(UserId);
+        _coinGeckoClient.GetEurPricesAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<string, decimal>());
     }
 
     [Fact]
