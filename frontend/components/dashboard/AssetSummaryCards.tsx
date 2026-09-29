@@ -6,6 +6,7 @@ interface AssetSummary {
   cryptoCurrencyId: number;
   symbol: string;
   name: string;
+  image: string | null;
   value: number;
   percentage: number;
 }
@@ -14,7 +15,10 @@ interface AssetSummary {
 // exists per (crypto, exchange) pair, but this row is a per-asset summary),
 // sorted the same way the allocation-by-asset endpoint orders its items.
 function summarizeByAsset(holdings: PortfolioHoldingItemResponse[]): AssetSummary[] {
-  const totals = new Map<number, { symbol: string; name: string; value: number }>();
+  const totals = new Map<
+    number,
+    { symbol: string; name: string; image: string | null; value: number }
+  >();
   for (const h of holdings) {
     const existing = totals.get(h.cryptoCurrencyId);
     if (existing) {
@@ -23,6 +27,7 @@ function summarizeByAsset(holdings: PortfolioHoldingItemResponse[]): AssetSummar
       totals.set(h.cryptoCurrencyId, {
         symbol: h.cryptoCurrencySymbol,
         name: h.cryptoCurrencyName,
+        image: h.cryptoCurrencyImage,
         value: h.value,
       });
     }
@@ -54,13 +59,23 @@ export function AssetSummaryCards({ holdings }: AssetSummaryCardsProps) {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {assets.map((asset) => (
         <div key={asset.cryptoCurrencyId} className="panel flex items-center gap-3 p-3">
-          <span
-            aria-hidden
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-            style={{ background: colorForKey(asset.symbol) }}
-          >
-            {asset.symbol.slice(0, 2).toUpperCase()}
-          </span>
+          {asset.image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={asset.image}
+              alt=""
+              aria-hidden
+              className="size-9 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+              style={{ background: colorForKey(asset.symbol) }}
+            >
+              {asset.symbol.slice(0, 2).toUpperCase()}
+            </span>
+          )}
           <div className="min-w-0">
             <p className="truncate text-xs text-ink-muted">
               <span className="font-semibold text-ink">{asset.symbol}</span> | {asset.name}

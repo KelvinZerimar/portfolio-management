@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ArrowUpDown } from "lucide-react";
 import { formatCurrency, formatDate, formatQuantity } from "@/lib/format";
+import { colorForKey } from "@/lib/chartColors";
 import type { PortfolioHoldingItemResponse } from "@/types";
 
 type SortKey = "asset" | "exchange" | "value";
@@ -122,8 +123,27 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                     className="border-b border-rule last:border-0 hover:bg-paper-raised"
                   >
                     <td className="px-4 py-2.5">
-                      <span className="font-medium">{h.cryptoCurrencySymbol}</span>{" "}
-                      <span className="text-ink-muted">{h.cryptoCurrencyName}</span>
+                      <div className="flex items-center gap-2">
+                        {h.cryptoCurrencyImage ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={h.cryptoCurrencyImage}
+                            alt=""
+                            aria-hidden
+                            className="size-5 shrink-0 rounded-full object-cover"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                            style={{ background: colorForKey(h.cryptoCurrencySymbol) }}
+                          >
+                            {h.cryptoCurrencySymbol.slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                        <span className="font-medium">{h.cryptoCurrencySymbol}</span>{" "}
+                        <span className="text-ink-muted">{h.cryptoCurrencyName}</span>
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-ink-muted">{h.exchangeName}</td>
                     <td className="tabular px-4 py-2.5 text-right">{formatCurrency(h.value)}</td>

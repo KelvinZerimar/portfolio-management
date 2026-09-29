@@ -46,17 +46,23 @@ export interface CryptoCurrencyResponse {
   id: number;
   symbol: string;
   name: string;
+  coinGeckoId: string | null;
+  image: string | null;
   createdAt: string;
 }
 
 export interface CreateCryptoCurrencyRequest {
   symbol: string;
   name: string;
+  coinGeckoId?: string;
+  image?: string;
 }
 
 export interface UpdateCryptoCurrencyRequest {
   symbol: string;
   name: string;
+  coinGeckoId?: string;
+  image?: string;
 }
 
 // ---------- Exchange ----------
@@ -162,6 +168,7 @@ export interface PortfolioHoldingItemResponse {
   cryptoCurrencyId: number;
   cryptoCurrencySymbol: string;
   cryptoCurrencyName: string;
+  cryptoCurrencyImage: string | null;
   exchangeId: number;
   exchangeName: string;
   quantity: number;
