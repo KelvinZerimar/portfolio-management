@@ -8,7 +8,12 @@ using MediatR;
 
 namespace Application.PortfolioEntries.Query;
 
-public sealed record GetPortfolioEntriesQuery(long PortfolioId, PaginatorRequest Paginator) : IRequest<ErrorOr<PaginatorResponse<PortfolioEntryResponse>>>;
+public sealed record GetPortfolioEntriesQuery(
+    long PortfolioId,
+    PaginatorRequest Paginator,
+    long? CryptoCurrencyId = null,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null) : IRequest<ErrorOr<PaginatorResponse<PortfolioEntryResponse>>>;
 
 public sealed class GetPortfolioEntriesQueryHandler(
     IPortfolioEntryRepository portfolioEntryRepository,
@@ -24,10 +29,13 @@ public sealed class GetPortfolioEntriesQueryHandler(
             return Error.NotFound("Portfolio.NotFound", $"Portfolio with ID '{query.PortfolioId}' was not found.");
         }
 
-        var result = await portfolioEntryRepository.GetAllAsync(
+        var result = await portfolioEntryRepository.GetPagedAsync(
+            query.PortfolioId,
             query.Paginator.Page,
             query.Paginator.Limit,
-            entry => entry.PortfolioId == query.PortfolioId,
+            query.CryptoCurrencyId,
+            query.FromDate,
+            query.ToDate,
             cancellationToken);
 
         return new PaginatorResponse<PortfolioEntryResponse>

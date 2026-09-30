@@ -31,9 +31,16 @@ public static class PortfolioEntryEndpoints
            .Produces(404)
            .Produces<List<Error>>(400);
 
-        bases.MapGet("/", async (ISender mediatr, [AsParameters] PaginatorRequest paginator, long portfolioId) =>
+        bases.MapGet("/", async (
+            ISender mediatr,
+            [AsParameters] PaginatorRequest paginator,
+            long portfolioId,
+            long? cryptoCurrencyId,
+            DateTime? fromDate,
+            DateTime? toDate) =>
         {
-            var result = await mediatr.Send(new GetPortfolioEntriesQuery(portfolioId, paginator));
+            var result = await mediatr.Send(
+                new GetPortfolioEntriesQuery(portfolioId, paginator, cryptoCurrencyId, fromDate, toDate));
             return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
            .Produces<PaginatorResponse<PortfolioEntryResponse>>()

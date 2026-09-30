@@ -22,6 +22,11 @@ public sealed class RefreshPortfolioPricesCommandHandler(
     ICurrentUserProvider currentUserProvider
     ) : IRequestHandler<RefreshPortfolioPricesCommand, ErrorOr<RefreshPortfolioPricesResponse>>
 {
+    // The app targets Spain-based users (EUR/es-ES throughout); "today" for the once-a-day
+    // refresh gate and for the recorded snapshot date must follow their local calendar day,
+    // not the UTC one, otherwise a refresh run close to local midnight lands on the wrong date.
+    private static readonly TimeZoneInfo SpainTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Madrid");
+
     public async Task<ErrorOr<RefreshPortfolioPricesResponse>> Handle(RefreshPortfolioPricesCommand command, CancellationToken cancellationToken)
     {
         var portfolio = await portfolioRepository.GetByIdAsync(command.Id, cancellationToken);
@@ -31,10 +36,17 @@ public sealed class RefreshPortfolioPricesCommandHandler(
         }
 
         var now = DateTime.UtcNow;
-        if (portfolio.LastPriceRefreshAt?.Date == now.Date)
+        var localToday = TimeZoneInfo.ConvertTimeFromUtc(now, SpainTimeZone).Date;
+        if (portfolio.LastPriceRefreshAt.HasValue &&
+            TimeZoneInfo.ConvertTimeFromUtc(portfolio.LastPriceRefreshAt.Value, SpainTimeZone).Date == localToday)
         {
             return Error.Conflict("Portfolio.PricesAlreadyRefreshedToday", "Los precios de este portfolio ya se actualizaron hoy. Inténtalo de nuevo mañana.");
         }
+
+        // Recorded as UTC midnight of the local calendar day, matching how manually-entered
+        // dates are stored, so the snapshot's date always matches the day the refresh actually
+        // ran in Spain instead of drifting a day near local midnight.
+        var recordedAt = DateTime.SpecifyKind(localToday, DateTimeKind.Utc);
 
         var entries = await portfolioEntryRepository.GetByPortfolioIdAsync(command.Id, cancellationToken);
         var holdings = portfolio.GetHoldingsAsOf(entries, now);
@@ -67,7 +79,7 @@ public sealed class RefreshPortfolioPricesCommandHandler(
 
             newEntries.Add(PortfolioEntry.Create(
                 portfolio.Id, holding.CryptoCurrencyId, holding.ExchangeId,
-                holding.Quantity, newPrice, now));
+                holding.Quantity, newPrice, recordedAt));
 
             updated.Add(new RefreshedHoldingItem(
                 holding.CryptoCurrencyId, holding.CryptoCurrency.Symbol, holding.ExchangeId,
