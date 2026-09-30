@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { IconButton } from "@/components/ui/IconButton";
+import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/ui/RowActions";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
@@ -35,6 +36,12 @@ export default function PortfolioDetailPage({
   const { id } = use(params);
   const portfolioId = Number(id);
 
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [filterCryptoCurrencyId, setFilterCryptoCurrencyId] = useState("");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
+
   const { data: portfolio, isError: portfolioError, error: portfolioErrorDetail } =
     usePortfolio(portfolioId);
   const {
@@ -42,16 +49,34 @@ export default function PortfolioDetailPage({
     isPending: entriesPending,
     isError: entriesError,
     error: entriesErrorDetail,
-  } = usePortfolioEntries({ portfolioId, limit: 100 });
+  } = usePortfolioEntries({
+    portfolioId,
+    page,
+    limit,
+    cryptoCurrencyId: filterCryptoCurrencyId ? Number(filterCryptoCurrencyId) : undefined,
+    fromDate: filterFromDate || undefined,
+    toDate: filterToDate || undefined,
+  });
   const { data: cryptoPage, isError: cryptoError } = useCryptoCurrencies({ limit: 100 });
   const { data: exchangePage, isError: exchangeError } = useExchanges({ limit: 100 });
 
   const cryptoCurrencies = useMemo(() => cryptoPage?.data ?? [], [cryptoPage]);
   const exchanges = useMemo(() => exchangePage?.data ?? [], [exchangePage]);
-  const entries = useMemo(
-    () => [...(entriesPage?.data ?? [])].sort((a, b) => b.recordedAt.localeCompare(a.recordedAt)),
-    [entriesPage]
-  );
+  const entries = entriesPage?.data ?? [];
+
+  function updateFilters(update: Partial<{ cryptoCurrencyId: string; fromDate: string; toDate: string }>) {
+    if (update.cryptoCurrencyId !== undefined) setFilterCryptoCurrencyId(update.cryptoCurrencyId);
+    if (update.fromDate !== undefined) setFilterFromDate(update.fromDate);
+    if (update.toDate !== undefined) setFilterToDate(update.toDate);
+    setPage(1);
+  }
+
+  function handleLimitChange(nextLimit: number) {
+    setLimit(nextLimit);
+    setPage(1);
+  }
+
+  const hasActiveFilters = Boolean(filterCryptoCurrencyId || filterFromDate || filterToDate);
 
   const cryptoById = useMemo(
     () => new Map(cryptoCurrencies.map((c) => [c.id, c])),
@@ -166,6 +191,51 @@ export default function PortfolioDetailPage({
       </div>
 
       <section className="panel overflow-hidden">
+        <div className="flex flex-wrap items-end gap-3 border-b border-rule px-4 py-3">
+          <SelectField
+            label="Activo"
+            name="filterCryptoCurrencyId"
+            value={filterCryptoCurrencyId}
+            onChange={(e) => updateFilters({ cryptoCurrencyId: e.target.value })}
+            className="w-28"
+          >
+            <option value="">Todos</option>
+            {cryptoCurrencies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.symbol}
+              </option>
+            ))}
+          </SelectField>
+          <TextField
+            label="Desde"
+            name="filterFromDate"
+            type="date"
+            value={filterFromDate}
+            onChange={(e) => updateFilters({ fromDate: e.target.value })}
+            max={filterToDate || undefined}
+            className="w-36"
+          />
+          <TextField
+            label="Hasta"
+            name="filterToDate"
+            type="date"
+            value={filterToDate}
+            onChange={(e) => updateFilters({ toDate: e.target.value })}
+            min={filterFromDate || undefined}
+            max={todayInputValue()}
+            className="w-36"
+          />
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              onClick={() =>
+                updateFilters({ cryptoCurrencyId: "", fromDate: "", toDate: "" })
+              }
+            >
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
         {entriesPending ? (
           <div className="h-32 animate-pulse bg-paper-raised" />
         ) : entriesError ? (
@@ -190,7 +260,9 @@ export default function PortfolioDetailPage({
                 {entries.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center text-ink-muted">
-                      Todavía no hay entradas en este portfolio.
+                      {hasActiveFilters
+                        ? "Ninguna entrada coincide con los filtros seleccionados."
+                        : "Todavía no hay entradas en este portfolio."}
                     </td>
                   </tr>
                 )}
@@ -243,6 +315,17 @@ export default function PortfolioDetailPage({
               </tbody>
             </table>
           </div>
+        )}
+
+        {entriesPage && (
+          <Pagination
+            page={entriesPage.page}
+            totalPages={entriesPage.totalPages}
+            total={entriesPage.total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={handleLimitChange}
+          />
         )}
 
         {canAddEntry ? (

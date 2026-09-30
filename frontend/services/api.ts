@@ -94,6 +94,9 @@ export const portfolioService = {
 
 export interface PortfolioEntryListParams extends ListParams {
   portfolioId?: number;
+  cryptoCurrencyId?: number;
+  fromDate?: string;
+  toDate?: string;
 }
 
 export const portfolioEntryService = {

@@ -15,15 +15,22 @@ const quantityFormatter = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: 8,
 });
 
+// Timestamps are stored and transmitted in UTC (e.g. price-refresh snapshots use
+// DateTime.UtcNow). Pinning the display timezone to Europe/Madrid — instead of
+// relying on the ambient runtime timezone, which differs between server-side
+// rendering and the browser — keeps the shown calendar date correct and consistent
+// regardless of where the formatting code executes.
 const dateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
   year: "numeric",
+  timeZone: "Europe/Madrid",
 });
 
 const shortDateFormatter = new Intl.DateTimeFormat("es-ES", {
   day: "2-digit",
   month: "short",
+  timeZone: "Europe/Madrid",
 });
 
 export function formatCurrency(value: number): string {
