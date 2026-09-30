@@ -1,9 +1,11 @@
+using Application.Common.Caching;
 using Application.Common.UnitOfWork;
 using Application.CryptoCurrencies.Interfaces;
 using Contracts.CryptoCurrencies;
 using Domain.Entities;
 using ErrorOr;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace Application.CryptoCurrencies.Command;
@@ -13,7 +15,8 @@ public sealed record CreateCryptoCurrencyCommand(CreateCryptoCurrencyRequest Req
 public sealed class CreateCryptoCurrencyCommandHandler(
     ILogger<CreateCryptoCurrencyCommandHandler> logger,
     ICryptoCurrencyRepository cryptoCurrencyRepository,
-    IUnitOfWork unitOfWork
+    IUnitOfWork unitOfWork,
+    HybridCache cache
     ) : IRequestHandler<CreateCryptoCurrencyCommand, ErrorOr<CreateCryptoCurrencyResponse>>
 {
     public async Task<ErrorOr<CreateCryptoCurrencyResponse>> Handle(CreateCryptoCurrencyCommand command, CancellationToken cancellationToken)
@@ -31,6 +34,7 @@ public sealed class CreateCryptoCurrencyCommandHandler(
 
         await cryptoCurrencyRepository.AddAsync(newCryptoCurrency, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.CryptoCurrencies, cancellationToken);
 
         logger.LogInformation("Created new crypto currency with ID {CryptoCurrencyId}", newCryptoCurrency.Id);
 

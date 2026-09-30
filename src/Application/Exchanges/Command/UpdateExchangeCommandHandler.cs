@@ -1,8 +1,10 @@
+using Application.Common.Caching;
 using Application.Common.UnitOfWork;
 using Application.Exchanges.Interfaces;
 using Contracts.Exchanges;
 using ErrorOr;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Exchanges.Command;
@@ -12,7 +14,8 @@ public sealed record UpdateExchangeCommand(long Id, UpdateExchangeRequest Reques
 public sealed class UpdateExchangeCommandHandler(
     ILogger<UpdateExchangeCommandHandler> logger,
     IExchangeRepository exchangeRepository,
-    IUnitOfWork unitOfWork
+    IUnitOfWork unitOfWork,
+    HybridCache cache
     ) : IRequestHandler<UpdateExchangeCommand, ErrorOr<UpdateExchangeResponse>>
 {
     public async Task<ErrorOr<UpdateExchangeResponse>> Handle(UpdateExchangeCommand command, CancellationToken cancellationToken)
@@ -36,6 +39,7 @@ public sealed class UpdateExchangeCommandHandler(
 
         exchangeRepository.Update(exchange);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.Exchanges, cancellationToken);
 
         logger.LogInformation("Updated exchange with ID {ExchangeId}", exchange.Id);
 

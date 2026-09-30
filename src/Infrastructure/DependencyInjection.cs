@@ -22,6 +22,7 @@ using Application.Users.Interfaces;
 using Application.Exchanges.Interfaces;
 using Application.CryptoCurrencies.Interfaces;
 using Application.PortfolioEntries.Interfaces;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure;
@@ -40,6 +41,7 @@ public static class DependencyInjection
             .AddPackages(configuration)
             .AddAdapters()
             .AddSecurity()
+            .AddCaching()
             .AddHealthChecksForDependencies(configuration);
 
         return services;
@@ -104,6 +106,23 @@ public static class DependencyInjection
     {
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        return services;
+    }
+
+    private static IServiceCollection AddCaching(this IServiceCollection services)
+    {
+        // In-process only for now (no IDistributedCache/Redis registered): still gives every
+        // cached read stampede protection and a shared TTL. Adding Redis later as an L2 tier
+        // is a config-only change; HybridCache picks it up automatically once registered.
+        services.AddHybridCache(options =>
+        {
+            options.DefaultEntryOptions = new()
+            {
+                Expiration = TimeSpan.FromMinutes(10),
+                LocalCacheExpiration = TimeSpan.FromMinutes(10),
+            };
+        });
+
         return services;
     }
 

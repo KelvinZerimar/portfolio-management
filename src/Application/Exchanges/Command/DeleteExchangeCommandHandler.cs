@@ -1,7 +1,9 @@
+using Application.Common.Caching;
 using Application.Common.UnitOfWork;
 using Application.Exchanges.Interfaces;
 using ErrorOr;
 using MediatR;
+using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Exchanges.Command;
@@ -11,7 +13,8 @@ public sealed record DeleteExchangeCommand(long Id) : IRequest<ErrorOr<Deleted>>
 public sealed class DeleteExchangeCommandHandler(
     ILogger<DeleteExchangeCommandHandler> logger,
     IExchangeRepository exchangeRepository,
-    IUnitOfWork unitOfWork
+    IUnitOfWork unitOfWork,
+    HybridCache cache
     ) : IRequestHandler<DeleteExchangeCommand, ErrorOr<Deleted>>
 {
     public async Task<ErrorOr<Deleted>> Handle(DeleteExchangeCommand command, CancellationToken cancellationToken)
@@ -24,6 +27,7 @@ public sealed class DeleteExchangeCommandHandler(
 
         exchangeRepository.RemoveRange([exchange]);
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await cache.RemoveByTagAsync(CacheTags.Exchanges, cancellationToken);
 
         logger.LogInformation("Deleted exchange with ID {ExchangeId}", command.Id);
 
