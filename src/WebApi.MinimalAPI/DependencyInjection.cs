@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.IdentityModel.Tokens;
 using WebApi.MinimalAPI.Endpoints.Common;
+using WebApi.MinimalAPI.Idempotency;
 using WebApi.MinimalAPI.OpenApi;
 using WebApi.MinimalAPI.Security;
 
@@ -18,6 +19,7 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserProvider, CurrentUserProvider>();
+        services.AddScoped<IdempotencyFilter>();
 
         services.AddJwtAuthentication(configuration);
         services.AddAuthorization();

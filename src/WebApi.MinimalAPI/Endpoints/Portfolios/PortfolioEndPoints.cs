@@ -6,6 +6,7 @@ using Contracts.Portfolios;
 using ErrorOr;
 using MediatR;
 using WebApi.MinimalAPI.Endpoints.Common;
+using WebApi.MinimalAPI.Idempotency;
 
 namespace WebApi.MinimalAPI.Endpoints.Portfolios;
 
@@ -27,8 +28,10 @@ public static class PortfolioEndPoints
             var result = await mediatr.Send(new CreatePortfolioCommand(request));
             return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
+           .AddEndpointFilter<IdempotencyFilter>()
            .Produces<CreatePortfolioResponse>()
            .Produces(409)
+           .Produces(422)
            .Produces<List<Error>>(400);
 
         bases.MapGet("/", async (ISender mediatr, [AsParameters] PaginatorRequest paginator) =>

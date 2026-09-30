@@ -6,6 +6,7 @@ using Contracts.PortfolioEntries;
 using ErrorOr;
 using MediatR;
 using WebApi.MinimalAPI.Endpoints.Common;
+using WebApi.MinimalAPI.Idempotency;
 
 namespace WebApi.MinimalAPI.Endpoints.PortfolioEntries;
 
@@ -27,8 +28,10 @@ public static class PortfolioEntryEndpoints
             var result = await mediatr.Send(new CreatePortfolioEntryCommand(request));
             return result.Match(Results.Ok, errors => errors.ToProblemResult());
         })
+           .AddEndpointFilter<IdempotencyFilter>()
            .Produces<CreatePortfolioEntryResponse>()
            .Produces(404)
+           .Produces(422)
            .Produces<List<Error>>(400);
 
         bases.MapGet("/", async (
