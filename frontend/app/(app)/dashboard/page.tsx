@@ -26,14 +26,20 @@ export default function DashboardPage() {
   const setSelectedPortfolioId = useAppStore((state) => state.setSelectedPortfolioId);
 
   const portfolios = useMemo(() => portfoliosPage?.data ?? [], [portfoliosPage]);
+  // selectedPortfolioId is persisted in localStorage, so it can point at a
+  // portfolio that no longer exists (e.g. after a database reset) — fall back
+  // to the first available portfolio whenever the stored id isn't among them.
+  const selectedPortfolioIsValid = portfolios.some((p) => p.id === selectedPortfolioId);
 
   useEffect(() => {
-    if (!selectedPortfolioId && portfolios.length > 0) {
+    if (portfolios.length > 0 && !selectedPortfolioIsValid) {
       setSelectedPortfolioId(portfolios[0].id);
     }
-  }, [selectedPortfolioId, portfolios, setSelectedPortfolioId]);
+  }, [selectedPortfolioIsValid, portfolios, setSelectedPortfolioId]);
 
-  const activePortfolioId = selectedPortfolioId ?? portfolios[0]?.id ?? 0;
+  const activePortfolioId = selectedPortfolioIsValid
+    ? (selectedPortfolioId as number)
+    : (portfolios[0]?.id ?? 0);
   const activePortfolio = portfolios.find((p) => p.id === activePortfolioId);
 
   const { data: history, isError: historyError, error: historyErrorDetail } =
