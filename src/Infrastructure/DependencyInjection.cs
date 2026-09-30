@@ -90,6 +90,7 @@ public static class DependencyInjection
         {
             var options = sp.GetRequiredService<IOptions<CoinGeckoOptions>>().Value;
             client.BaseAddress = new Uri(options.BaseUrl);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("PortfolioManagementMinimalApi/1.0");
             if (!string.IsNullOrEmpty(options.ApiKey))
             {
                 client.DefaultRequestHeaders.Add("x-cg-demo-api-key", options.ApiKey);
