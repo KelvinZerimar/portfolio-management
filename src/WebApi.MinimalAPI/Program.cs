@@ -31,7 +31,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:3000",
                 "https://localhost:3000",
                 "http://localhost:3001",
-                "https://localhost:3001"
+                "https://localhost:3001",
+                "https://portfolio-web.redstone-57b2779e.spaincentral.azurecontainerapps.io"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
