@@ -1,5 +1,5 @@
+using Application.Common.Messaging;
 using Application.Common.Security;
-using Application.Common.UnitOfWork;
 using Application.PortfolioEntries.Interfaces;
 using Application.Portfolios.Interfaces;
 using ErrorOr;
@@ -8,13 +8,12 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.PortfolioEntries.Command;
 
-public sealed record DeletePortfolioEntryCommand(long Id) : IRequest<ErrorOr<Deleted>>;
+public sealed record DeletePortfolioEntryCommand(long Id) : IRequest<ErrorOr<Deleted>>, ICommand;
 
 public sealed class DeletePortfolioEntryCommandHandler(
     ILogger<DeletePortfolioEntryCommandHandler> logger,
     IPortfolioEntryRepository portfolioEntryRepository,
     IPortfolioRepository portfolioRepository,
-    IUnitOfWork unitOfWork,
     ICurrentUserProvider currentUserProvider
     ) : IRequestHandler<DeletePortfolioEntryCommand, ErrorOr<Deleted>>
 {
@@ -33,7 +32,6 @@ public sealed class DeletePortfolioEntryCommandHandler(
         }
 
         portfolioEntryRepository.RemoveRange([entry]);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Deleted portfolio entry with ID {PortfolioEntryId}", command.Id);
 

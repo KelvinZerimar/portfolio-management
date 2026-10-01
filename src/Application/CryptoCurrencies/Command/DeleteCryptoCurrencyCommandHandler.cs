@@ -1,20 +1,20 @@
 using Application.Common.Caching;
-using Application.Common.UnitOfWork;
+using Application.Common.Messaging;
 using Application.CryptoCurrencies.Interfaces;
 using ErrorOr;
 using MediatR;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace Application.CryptoCurrencies.Command;
 
-public sealed record DeleteCryptoCurrencyCommand(long Id) : IRequest<ErrorOr<Deleted>>;
+public sealed record DeleteCryptoCurrencyCommand(long Id) : IRequest<ErrorOr<Deleted>>, ICommand, IInvalidatesCache
+{
+    public IReadOnlyCollection<string> CacheTagsToInvalidate => [CacheTags.CryptoCurrencies];
+}
 
 public sealed class DeleteCryptoCurrencyCommandHandler(
     ILogger<DeleteCryptoCurrencyCommandHandler> logger,
-    ICryptoCurrencyRepository cryptoCurrencyRepository,
-    IUnitOfWork unitOfWork,
-    HybridCache cache
+    ICryptoCurrencyRepository cryptoCurrencyRepository
     ) : IRequestHandler<DeleteCryptoCurrencyCommand, ErrorOr<Deleted>>
 {
     public async Task<ErrorOr<Deleted>> Handle(DeleteCryptoCurrencyCommand command, CancellationToken cancellationToken)
@@ -26,8 +26,6 @@ public sealed class DeleteCryptoCurrencyCommandHandler(
         }
 
         cryptoCurrencyRepository.RemoveRange([cryptoCurrency]);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await cache.RemoveByTagAsync(CacheTags.CryptoCurrencies, cancellationToken);
 
         logger.LogInformation("Deleted crypto currency with ID {CryptoCurrencyId}", command.Id);
 

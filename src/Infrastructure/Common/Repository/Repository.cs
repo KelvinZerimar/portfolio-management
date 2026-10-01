@@ -30,10 +30,10 @@ public abstract class Repository<TEntity>(DbContext dbContext) : IRepository<TEn
     public void RemoveRange(List<TEntity> entities)
         => dbContext.Set<TEntity>().RemoveRange(entities);
 
-    public async Task UpdateRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken)
+    public Task UpdateRangeAsync(IEnumerable<TEntity> entities, CancellationToken cancellationToken)
     {
         dbContext.Set<TEntity>().UpdateRange(entities);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
 }

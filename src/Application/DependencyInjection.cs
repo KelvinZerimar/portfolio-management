@@ -20,6 +20,9 @@ public static class DependencyInjection
                 options.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly);
                 options.AddOpenBehavior(typeof(ValidationBehavior<,>));
                 options.AddOpenBehavior(typeof(LoggingBehavior<,>));
+                // CacheInvalidationBehavior wraps UnitOfWorkBehavior so invalidation runs after the commit.
+                options.AddOpenBehavior(typeof(CacheInvalidationBehavior<,>));
+                options.AddOpenBehavior(typeof(UnitOfWorkBehavior<,>));
             });
 
         services.AddValidatorsFromAssemblyContaining(typeof(DependencyInjection));

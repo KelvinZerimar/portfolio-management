@@ -1,21 +1,22 @@
 using Application.Common.Caching;
-using Application.Common.UnitOfWork;
+using Application.Common.Messaging;
 using Application.Exchanges.Interfaces;
 using Contracts.Exchanges;
 using ErrorOr;
 using MediatR;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Exchanges.Command;
 
-public sealed record UpdateExchangeCommand(long Id, UpdateExchangeRequest Request) : IRequest<ErrorOr<UpdateExchangeResponse>>;
+public sealed record UpdateExchangeCommand(long Id, UpdateExchangeRequest Request)
+    : IRequest<ErrorOr<UpdateExchangeResponse>>, ICommand, IInvalidatesCache
+{
+    public IReadOnlyCollection<string> CacheTagsToInvalidate => [CacheTags.Exchanges];
+}
 
 public sealed class UpdateExchangeCommandHandler(
     ILogger<UpdateExchangeCommandHandler> logger,
-    IExchangeRepository exchangeRepository,
-    IUnitOfWork unitOfWork,
-    HybridCache cache
+    IExchangeRepository exchangeRepository
     ) : IRequestHandler<UpdateExchangeCommand, ErrorOr<UpdateExchangeResponse>>
 {
     public async Task<ErrorOr<UpdateExchangeResponse>> Handle(UpdateExchangeCommand command, CancellationToken cancellationToken)
@@ -38,8 +39,6 @@ public sealed class UpdateExchangeCommandHandler(
         exchange.ApiKey = request.ApiKey;
 
         exchangeRepository.Update(exchange);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await cache.RemoveByTagAsync(CacheTags.Exchanges, cancellationToken);
 
         logger.LogInformation("Updated exchange with ID {ExchangeId}", exchange.Id);
 

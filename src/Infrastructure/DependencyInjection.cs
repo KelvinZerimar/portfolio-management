@@ -58,8 +58,9 @@ public static class DependencyInjection
         string? connectionString = configuration.GetConnectionString("Database");
         services.AddDbContext<AppDbContext>(
             options => options
-                .UseNpgsql(connectionString, npgsqlOptions =>
-                    npgsqlOptions.MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Default))
+                .UseNpgsql(connectionString, npgsqlOptions => npgsqlOptions
+                    .MigrationsHistoryTable(HistoryRepository.DefaultTableName, Schemas.Default)
+                    .EnableRetryOnFailure())
                 .UseSnakeCaseNamingConvention());
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         return services;

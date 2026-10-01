@@ -1,5 +1,5 @@
+using Application.Common.Messaging;
 using Application.Common.Security;
-using Application.Common.UnitOfWork;
 using Application.CryptoCurrencies.Interfaces;
 using Application.Portfolios.Interfaces;
 using Application.PortfolioEntries.Interfaces;
@@ -11,14 +11,13 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Portfolios.Command;
 
-public sealed record RefreshPortfolioPricesCommand(long Id) : IRequest<ErrorOr<RefreshPortfolioPricesResponse>>;
+public sealed record RefreshPortfolioPricesCommand(long Id) : IRequest<ErrorOr<RefreshPortfolioPricesResponse>>, ICommand;
 
 public sealed class RefreshPortfolioPricesCommandHandler(
     ILogger<RefreshPortfolioPricesCommandHandler> logger,
     IPortfolioRepository portfolioRepository,
     IPortfolioEntryRepository portfolioEntryRepository,
     ICoinGeckoClient coinGeckoClient,
-    IUnitOfWork unitOfWork,
     ICurrentUserProvider currentUserProvider
     ) : IRequestHandler<RefreshPortfolioPricesCommand, ErrorOr<RefreshPortfolioPricesResponse>>
 {
@@ -93,7 +92,6 @@ public sealed class RefreshPortfolioPricesCommandHandler(
 
         portfolio.LastPriceRefreshAt = now;
         portfolioRepository.Update(portfolio);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Refreshed {Count} holdings for portfolio {PortfolioId}", updated.Count, portfolio.Id);
 

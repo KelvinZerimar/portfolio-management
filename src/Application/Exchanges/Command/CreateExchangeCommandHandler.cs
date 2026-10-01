@@ -1,22 +1,23 @@
 using Application.Common.Caching;
-using Application.Common.UnitOfWork;
+using Application.Common.Messaging;
 using Application.Exchanges.Interfaces;
 using Contracts.Exchanges;
 using Domain.Entities;
 using ErrorOr;
 using MediatR;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Exchanges.Command;
 
-public sealed record CreateExchangeCommand(CreateExchangeRequest Request) : IRequest<ErrorOr<CreateExchangeResponse>>;
+public sealed record CreateExchangeCommand(CreateExchangeRequest Request)
+    : IRequest<ErrorOr<CreateExchangeResponse>>, ICommand, IInvalidatesCache
+{
+    public IReadOnlyCollection<string> CacheTagsToInvalidate => [CacheTags.Exchanges];
+}
 
 public sealed class CreateExchangeCommandHandler(
     ILogger<CreateExchangeCommandHandler> logger,
-    IExchangeRepository exchangeRepository,
-    IUnitOfWork unitOfWork,
-    HybridCache cache
+    IExchangeRepository exchangeRepository
     ) : IRequestHandler<CreateExchangeCommand, ErrorOr<CreateExchangeResponse>>
 {
     public async Task<ErrorOr<CreateExchangeResponse>> Handle(CreateExchangeCommand command, CancellationToken cancellationToken)
@@ -33,8 +34,6 @@ public sealed class CreateExchangeCommandHandler(
         var newExchange = Exchange.Create(request.Name, request.ApiKey);
 
         await exchangeRepository.AddAsync(newExchange, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
-        await cache.RemoveByTagAsync(CacheTags.Exchanges, cancellationToken);
 
         logger.LogInformation("Created new exchange with ID {ExchangeId}", newExchange.Id);
 

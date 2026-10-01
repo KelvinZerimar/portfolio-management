@@ -1,5 +1,5 @@
+using Application.Common.Messaging;
 using Application.Common.Security;
-using Application.Common.UnitOfWork;
 using Application.CryptoCurrencies.Interfaces;
 using Application.Exchanges.Interfaces;
 using Application.PortfolioEntries.Interfaces;
@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.PortfolioEntries.Command;
 
-public sealed record CreatePortfolioEntryCommand(CreatePortfolioEntryRequest Request) : IRequest<ErrorOr<CreatePortfolioEntryResponse>>;
+public sealed record CreatePortfolioEntryCommand(CreatePortfolioEntryRequest Request) : IRequest<ErrorOr<CreatePortfolioEntryResponse>>, ICommand;
 
 public sealed class CreatePortfolioEntryCommandHandler(
     ILogger<CreatePortfolioEntryCommandHandler> logger,
@@ -20,7 +20,6 @@ public sealed class CreatePortfolioEntryCommandHandler(
     IPortfolioRepository portfolioRepository,
     ICryptoCurrencyRepository cryptoCurrencyRepository,
     IExchangeRepository exchangeRepository,
-    IUnitOfWork unitOfWork,
     ICurrentUserProvider currentUserProvider
     ) : IRequestHandler<CreatePortfolioEntryCommand, ErrorOr<CreatePortfolioEntryResponse>>
 {
@@ -56,7 +55,6 @@ public sealed class CreatePortfolioEntryCommandHandler(
             request.RecordedAt);
 
         await portfolioEntryRepository.AddAsync(newEntry, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Created new portfolio entry with ID {PortfolioEntryId}", newEntry.Id);
 

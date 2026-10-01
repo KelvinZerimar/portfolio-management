@@ -1,5 +1,5 @@
+using Application.Common.Messaging;
 using Application.Common.Security;
-using Application.Common.UnitOfWork;
 using Application.CryptoCurrencies.Interfaces;
 using Application.Exchanges.Interfaces;
 using Application.PortfolioEntries.Interfaces;
@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.PortfolioEntries.Command;
 
-public sealed record UpdatePortfolioEntryCommand(long Id, UpdatePortfolioEntryRequest Request) : IRequest<ErrorOr<UpdatePortfolioEntryResponse>>;
+public sealed record UpdatePortfolioEntryCommand(long Id, UpdatePortfolioEntryRequest Request) : IRequest<ErrorOr<UpdatePortfolioEntryResponse>>, ICommand;
 
 public sealed class UpdatePortfolioEntryCommandHandler(
     ILogger<UpdatePortfolioEntryCommandHandler> logger,
@@ -19,7 +19,6 @@ public sealed class UpdatePortfolioEntryCommandHandler(
     IPortfolioRepository portfolioRepository,
     ICryptoCurrencyRepository cryptoCurrencyRepository,
     IExchangeRepository exchangeRepository,
-    IUnitOfWork unitOfWork,
     ICurrentUserProvider currentUserProvider
     ) : IRequestHandler<UpdatePortfolioEntryCommand, ErrorOr<UpdatePortfolioEntryResponse>>
 {
@@ -58,7 +57,6 @@ public sealed class UpdatePortfolioEntryCommandHandler(
         entry.RecordedAt = request.RecordedAt;
 
         portfolioEntryRepository.Update(entry);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Updated portfolio entry with ID {PortfolioEntryId}", entry.Id);
 

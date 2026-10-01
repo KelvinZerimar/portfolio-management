@@ -1,5 +1,5 @@
+using Application.Common.Messaging;
 using Application.Common.Security;
-using Application.Common.UnitOfWork;
 using Application.Portfolios.Interfaces;
 using Contracts.Portfolios;
 using ErrorOr;
@@ -8,12 +8,11 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Portfolios.Command;
 
-public sealed record UpdatePortfolioCommand(long Id, UpdatePortfolioRequest Request) : IRequest<ErrorOr<UpdatePortfolioResponse>>;
+public sealed record UpdatePortfolioCommand(long Id, UpdatePortfolioRequest Request) : IRequest<ErrorOr<UpdatePortfolioResponse>>, ICommand;
 
 public sealed class UpdatePortfolioCommandHandler(
     ILogger<UpdatePortfolioCommandHandler> logger,
     IPortfolioRepository portfolioRepository,
-    IUnitOfWork unitOfWork,
     ICurrentUserProvider currentUserProvider
     ) : IRequestHandler<UpdatePortfolioCommand, ErrorOr<UpdatePortfolioResponse>>
 {
@@ -38,7 +37,6 @@ public sealed class UpdatePortfolioCommandHandler(
         portfolio.UpdatedAt = DateTime.UtcNow;
 
         portfolioRepository.Update(portfolio);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation("Updated portfolio with ID {PortfolioId}", portfolio.Id);
 

@@ -1,5 +1,4 @@
 using Application.Common.Security;
-using Application.Common.UnitOfWork;
 using Application.CryptoCurrencies.Interfaces;
 using Application.Portfolios.Command;
 using Application.Portfolios.Interfaces;
@@ -16,7 +15,6 @@ public class RefreshPortfolioPricesCommandHandlerTests
     private readonly IPortfolioRepository _portfolioRepository = Substitute.For<IPortfolioRepository>();
     private readonly IPortfolioEntryRepository _portfolioEntryRepository = Substitute.For<IPortfolioEntryRepository>();
     private readonly ICoinGeckoClient _coinGeckoClient = Substitute.For<ICoinGeckoClient>();
-    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly ICurrentUserProvider _currentUserProvider = Substitute.For<ICurrentUserProvider>();
 
     private const long UserId = 1L;
@@ -26,7 +24,6 @@ public class RefreshPortfolioPricesCommandHandlerTests
         _portfolioRepository,
         _portfolioEntryRepository,
         _coinGeckoClient,
-        _unitOfWork,
         _currentUserProvider);
 
     private static PortfolioEntry CreateHolding(
@@ -94,7 +91,6 @@ public class RefreshPortfolioPricesCommandHandlerTests
                 && e.Single().PricePerUnit == 150m
                 && e.Single().CryptoCurrencyId == 1),
             Arg.Any<CancellationToken>());
-        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -115,7 +111,6 @@ public class RefreshPortfolioPricesCommandHandlerTests
             .Which.Reason.Should().Be("NoCoinGeckoIdMapped");
         await _coinGeckoClient.Received(1).GetEurPricesAsync(
             Arg.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0), Arg.Any<CancellationToken>());
-        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -151,7 +146,6 @@ public class RefreshPortfolioPricesCommandHandlerTests
         result.Value.Skipped.Should().BeEmpty();
         await _coinGeckoClient.Received(1).GetEurPricesAsync(
             Arg.Is<IReadOnlyCollection<string>>(ids => ids.Count == 0), Arg.Any<CancellationToken>());
-        await _unitOfWork.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -181,7 +175,6 @@ public class RefreshPortfolioPricesCommandHandlerTests
         result.FirstError.Code.Should().Be("Portfolio.PricesAlreadyRefreshedToday");
         await _coinGeckoClient.DidNotReceive().GetEurPricesAsync(
             Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
-        await _unitOfWork.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
     [Fact]
