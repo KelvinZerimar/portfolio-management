@@ -1,6 +1,7 @@
 import { Header } from "./Header";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
+import { Footer } from "./Footer";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
         <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
+      <Footer />
     </div>
   );
 }
