@@ -137,12 +137,6 @@ public static class DependencyInjection
         ConfigurationManager configuration)
     {
         services
-            .AddOptions<ConnectionStringOptions>()
-            .Bind(configuration.GetRequiredSection(ConnectionStringOptions.SectionName))
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
-
-        services
             .AddOptions<JwtOptions>()
             .Bind(configuration.GetRequiredSection(JwtOptions.SectionName))
             .ValidateDataAnnotations()
