@@ -5,15 +5,24 @@ interface ExportColumn {
   value: (h: PortfolioHoldingItemResponse) => string | number;
 }
 
-// Plain numbers (not locale-formatted currency strings) so the sheet keeps them
-// as real numeric cells that Excel/Sheets can sum and sort.
+// es-ES uses ',' as the decimal separator (and the CSV field separator is ';',
+// so the comma never collides with it). Rounded to 2 decimals as requested.
+const numberFormatter = new Intl.NumberFormat("es-ES", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
+
 const COLUMNS: ExportColumn[] = [
   { header: "Activo", value: (h) => h.cryptoCurrencySymbol },
   { header: "Nombre", value: (h) => h.cryptoCurrencyName },
   { header: "Exchange", value: (h) => h.exchangeName },
-  { header: "Cantidad", value: (h) => h.quantity },
-  { header: "Precio (EUR)", value: (h) => h.pricePerUnit },
-  { header: "Valor (EUR)", value: (h) => h.value },
+  { header: "Cantidad", value: (h) => formatNumber(h.quantity) },
+  { header: "Precio (EUR)", value: (h) => formatNumber(h.pricePerUnit) },
+  { header: "Valor (EUR)", value: (h) => formatNumber(h.value) },
   { header: "Registrado", value: (h) => new Date(h.recordedAt).toISOString().slice(0, 10) },
 ];
 
