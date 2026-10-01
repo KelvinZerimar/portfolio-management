@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Download } from "lucide-react";
 import { formatCurrency, formatDate, formatQuantity } from "@/lib/format";
 import { colorForKey } from "@/lib/chartColors";
+import { exportHoldingsToCsv, exportHoldingsToExcel } from "@/lib/exportHoldings";
 import type { PortfolioHoldingItemResponse } from "@/types";
 
 type SortKey = "asset" | "exchange" | "value";
@@ -62,13 +63,35 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     <section aria-label="Holdings actuales" className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule px-6 py-4">
         <h2 className="text-sm font-bold">Holdings</h2>
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Filtrar por activo o exchange…"
-          className="w-full max-w-64 rounded-lg border border-rule bg-paper px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand"
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => exportHoldingsToCsv(rows, `holdings-${new Date().toISOString().slice(0, 10)}`)}
+            disabled={rows.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={14} strokeWidth={1.75} aria-hidden />
+            CSV
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              exportHoldingsToExcel(rows, `holdings-${new Date().toISOString().slice(0, 10)}`)
+            }
+            disabled={rows.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={14} strokeWidth={1.75} aria-hidden />
+            Excel
+          </button>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filtrar por activo o exchange…"
+            className="w-full max-w-64 rounded-lg border border-rule bg-paper px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand"
+          />
+        </div>
       </div>
 
       {holdings.length === 0 ? (

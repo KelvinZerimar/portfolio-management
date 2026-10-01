@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
@@ -9,6 +9,7 @@ import { PortfolioAllocationGroupBy } from "@/types";
 import { formatCurrency, formatPercentage } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
 import { colorForKey } from "@/lib/chartColors";
+import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
 
 type GroupBy = "asset" | "exchange";
 
@@ -28,7 +29,14 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
     groupBy === "asset" ? PortfolioAllocationGroupBy.Asset : PortfolioAllocationGroupBy.Exchange
   );
 
-  const items = data?.items ?? [];
+  // Top assets by value, Euro cash excluded (exchange grouping has no "Euro"
+  // concept, so it's only capped, not filtered), capped at MAX_RANKED_ASSETS —
+  // matching the summary cards and the value history chart.
+  const items = useMemo(() => {
+    const raw = data?.items ?? [];
+    const filtered = groupBy === "asset" ? raw.filter((item) => !isEuroAsset(item.label)) : raw;
+    return [...filtered].sort((a, b) => b.value - a.value).slice(0, MAX_RANKED_ASSETS);
+  }, [data, groupBy]);
 
   return (
     <section className="panel p-6" aria-label="Participación por activo o exchange">

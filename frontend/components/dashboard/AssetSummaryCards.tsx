@@ -1,5 +1,6 @@
 import { formatCurrency, formatPercentage } from "@/lib/format";
 import { colorForKey } from "@/lib/chartColors";
+import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
 import type { PortfolioHoldingItemResponse } from "@/types";
 
 interface AssetSummary {
@@ -41,7 +42,9 @@ function summarizeByAsset(holdings: PortfolioHoldingItemResponse[]): AssetSummar
       ...t,
       percentage: totalValue === 0 ? 0 : (t.value / totalValue) * 100,
     }))
-    .sort((a, b) => b.value - a.value);
+    .filter((asset) => !isEuroAsset(asset.symbol, asset.name))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, MAX_RANKED_ASSETS);
 }
 
 interface AssetSummaryCardsProps {

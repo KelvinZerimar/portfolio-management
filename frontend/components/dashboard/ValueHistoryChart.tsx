@@ -14,6 +14,7 @@ import {
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { formatCurrency, formatDate, formatShortDate } from "@/lib/format";
 import { colorForKey } from "@/lib/chartColors";
+import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
 import type { PortfolioAssetHistorySeriesResponse, PortfolioHistoryPointResponse } from "@/types";
 
 type Range = "30d" | "90d" | "1y" | "all";
@@ -57,13 +58,29 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
     return points.filter((p) => new Date(p.date).getTime() >= cutoff);
   }, [points, range, now]);
 
+  // Same ranking as the summary cards: top assets by latest value, Euro cash
+  // excluded, capped at MAX_RANKED_ASSETS so the chart doesn't get overcrowded.
+  const rankedAssets = useMemo(
+    () =>
+      byAsset
+        .filter((series) => !isEuroAsset(series.symbol))
+        .map((series) => ({
+          series,
+          latestValue: series.points.at(-1)?.value ?? 0,
+        }))
+        .sort((a, b) => b.latestValue - a.latestValue)
+        .slice(0, MAX_RANKED_ASSETS)
+        .map((entry) => entry.series),
+    [byAsset]
+  );
+
   // Multiple lines only earn their place once there's more than one asset to tell
   // apart — a single asset's line is identical to the total and would just double it.
-  const showAssetLines = byAsset.length > 1;
+  const showAssetLines = rankedAssets.length > 1;
 
   const merged = useMemo<MergedPoint[]>(() => {
     if (!showAssetLines) return filtered.map((p) => ({ date: p.date, value: p.value, byAsset: {} }));
-    const byDate = byAsset.map((series) => ({
+    const byDate = rankedAssets.map((series) => ({
       symbol: series.symbol,
       values: new Map(series.points.map((p) => [p.date, p.value])),
     }));
@@ -72,7 +89,7 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
       value: p.value,
       byAsset: Object.fromEntries(byDate.map((s) => [s.symbol, s.values.get(p.date) ?? 0])),
     }));
-  }, [filtered, byAsset, showAssetLines]);
+  }, [filtered, rankedAssets, showAssetLines]);
 
   const reading = hovered ?? merged[merged.length - 1] ?? null;
   const delta = merged.length >= 2 ? merged[merged.length - 1].value - merged[0].value : null;
@@ -80,11 +97,11 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
   const legend = useMemo(
     () =>
       showAssetLines
-        ? [...byAsset]
+        ? [...rankedAssets]
             .map((series) => ({ symbol: series.symbol, color: colorForKey(series.symbol) }))
             .sort((a, b) => a.symbol.localeCompare(b.symbol))
         : [],
-    [byAsset, showAssetLines]
+    [rankedAssets, showAssetLines]
   );
 
   return (
