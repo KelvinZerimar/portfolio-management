@@ -194,8 +194,5 @@ az containerapp update \
 
 ## Pendiente / mejoras futuras
 
-- El backend no tiene workflow de CI/CD en este repo — su Container App se publicó manualmente
-  (vía Visual Studio). Si se automatiza, debería seguir el mismo patrón OIDC + registro de
-  contenedores que el frontend.
 - Dominio personalizado y certificado TLS para las URLs de `*.azurecontainerapps.io`.
 - Revisar reglas de autoscaling (min/max réplicas) de ambos Container Apps para producción.
