@@ -16,14 +16,18 @@ using Infrastructure.Users;
 using Infrastructure.Exchanges;
 using Infrastructure.CryptoCurrencies;
 using Infrastructure.PortfolioEntries;
+using Infrastructure.Notes;
 using Application.Common.Security;
 using Application.Portfolios.Interfaces;
 using Application.Users.Interfaces;
 using Application.Exchanges.Interfaces;
 using Application.CryptoCurrencies.Interfaces;
 using Application.PortfolioEntries.Interfaces;
+using Application.Notes.Interfaces;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Cosmos;
 
 namespace Infrastructure;
 
@@ -37,6 +41,7 @@ public static class DependencyInjection
             .AddLoggingConfiguration(configuration)
             .AddBackgroundServices(configuration)
             .AddDbContexts(configuration)
+            .AddCosmosDb(configuration)
             .AddRepositories()
             .AddPackages(configuration)
             .AddAdapters()
@@ -45,6 +50,50 @@ public static class DependencyInjection
             .AddHealthChecksForDependencies(configuration);
 
         return services;
+    }
+
+    private static IServiceCollection AddCosmosDb(this IServiceCollection services, IConfiguration configuration)
+    {
+        var connectionString = configuration.GetConnectionString("CosmosDb");
+        services.AddSingleton(_ => new CosmosClient(connectionString));
+        services.AddScoped<INoteRepository, NoteRepository>();
+
+        return services;
+    }
+
+    // Called once from Program.cs after the app is built. Idempotent — no-op if the database/
+    // container already exist. Unlike EF migrations (applied explicitly via the dotnet-ef CLI),
+    // this is safe to run on every startup: there's no schema to diff, just "ensure this
+    // container is there".
+    //
+    // Deliberately non-fatal: provisioning here can fail for reasons that are an Azure account
+    // setting, not a code bug (e.g. the account's configured total-throughput cap). That must
+    // not take down the whole API — Portfolio/Exchange/etc. have nothing to do with Cosmos DB.
+    // If this fails, the API still starts; only the /Note endpoints will error until the
+    // container is provisioned (manually, or by fixing the throughput budget) and the app restarted.
+    public static async Task EnsureCosmosDbInitializedAsync(this IServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<CosmosClient>>();
+        var client = scope.ServiceProvider.GetRequiredService<CosmosClient>();
+        var cosmosOptions = scope.ServiceProvider.GetRequiredService<IOptions<CosmosDbOptions>>().Value;
+
+        try
+        {
+            var database = await client.CreateDatabaseIfNotExistsAsync(cosmosOptions.DatabaseName);
+            // Matches the partition key of the pre-existing "Notes" container this app was
+            // pointed at (DashboardDB/Notes) — only takes effect if the container has to be
+            // created from scratch, e.g. in a different environment.
+            await database.Database.CreateContainerIfNotExistsAsync(cosmosOptions.ContainerName, partitionKeyPath: "/category");
+        }
+        catch (CosmosException ex)
+        {
+            logger.LogWarning(ex,
+                "Could not ensure Cosmos DB database/container '{DatabaseName}/{ContainerName}' exist. " +
+                "The API will still start, but /Note endpoints will fail until this is resolved " +
+                "(see docs/notes-cosmos-db.md).",
+                cosmosOptions.DatabaseName, cosmosOptions.ContainerName);
+        }
     }
 
     private static IServiceCollection AddBackgroundServices(this IServiceCollection services,
@@ -107,6 +156,7 @@ public static class DependencyInjection
     {
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<IJwtTokenGenerator, JwtTokenGenerator>();
+        services.AddSingleton<IEncryptionService, AesEncryptionService>();
         return services;
     }
 
@@ -149,13 +199,26 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        services
+            .AddOptions<CosmosDbOptions>()
+            .Bind(configuration.GetRequiredSection(CosmosDbOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddOptions<EncryptionOptions>()
+            .Bind(configuration.GetRequiredSection(EncryptionOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
         return services;
     }
 
     private static void AddHealthChecksForDependencies(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHealthChecks()
-            .AddNpgSql(configuration.GetConnectionString("Database")!, name: "postgres");
+            .AddNpgSql(configuration.GetConnectionString("Database")!, name: "postgres")
+            .AddAzureCosmosDB(name: "cosmosdb");
 
         services.AddHealthChecksUI(setup =>
         {
