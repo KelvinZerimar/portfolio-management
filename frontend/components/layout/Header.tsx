@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import { BrandMark } from "@/components/ui/BrandMark";
@@ -10,9 +11,16 @@ export function Header() {
   const userEmail = useAppStore((state) => state.userEmail);
   const clearSession = useAppStore((state) => state.clearSession);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   function handleLogout() {
+    // Logout is a client-side navigation (no page reload), so the single
+    // QueryClient instance from app/providers.tsx survives it. Query keys
+    // don't include userId, so without this, the next user to log in would
+    // see the previous user's cached dashboard/portfolio/notes data until
+    // each query's staleTime (up to 5 min) happened to expire.
     clearSession();
+    queryClient.clear();
     router.push("/login");
   }
 

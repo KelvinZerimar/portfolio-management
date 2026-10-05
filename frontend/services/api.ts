@@ -2,6 +2,7 @@ import { api } from "@/lib/axios";
 import {
   type CreateCryptoCurrencyRequest,
   type CreateExchangeRequest,
+  type CreateNoteRequest,
   type CreatePortfolioEntryRequest,
   type CreatePortfolioRequest,
   type CreatePortfolioResponse,
@@ -9,6 +10,7 @@ import {
   type ExchangeResponse,
   type LoginUserRequest,
   type LoginUserResponse,
+  type NoteResponse,
   type PaginatorResponse,
   type PortfolioAllocationGroupBy,
   type PortfolioAllocationResponse,
@@ -22,6 +24,7 @@ import {
   type RegisterUserResponse,
   type UpdateCryptoCurrencyRequest,
   type UpdateExchangeRequest,
+  type UpdateNoteRequest,
   type UpdatePortfolioEntryRequest,
   type UpdatePortfolioRequest,
   PortfolioAllocationGroupBy as GroupBy,
@@ -152,4 +155,29 @@ export const exchangeService = {
     api.put<ExchangeResponse>(`/Exchange/${id}`, data).then((r) => r.data),
 
   remove: (id: number) => api.delete<void>(`/Exchange/${id}`).then((r) => r.data),
+};
+
+// ---------- Notes ----------
+
+export interface NoteListParams extends ListParams {
+  category?: string;
+  isActive?: boolean;
+}
+
+export const noteService = {
+  list: (params: NoteListParams = {}) =>
+    api.get<PaginatorResponse<NoteResponse>>("/Note", { params }).then((r) => r.data),
+
+  latest: (count = 10) =>
+    api.get<NoteResponse[]>("/Note/latest", { params: { count } }).then((r) => r.data),
+
+  getById: (id: string) => api.get<NoteResponse>(`/Note/${id}`).then((r) => r.data),
+
+  create: (data: CreateNoteRequest) =>
+    api.post<NoteResponse>("/Note", data).then((r) => r.data),
+
+  update: (id: string, data: UpdateNoteRequest) =>
+    api.put<NoteResponse>(`/Note/${id}`, data).then((r) => r.data),
+
+  remove: (id: string) => api.delete<void>(`/Note/${id}`).then((r) => r.data),
 };

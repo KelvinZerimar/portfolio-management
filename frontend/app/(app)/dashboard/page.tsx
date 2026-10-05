@@ -11,6 +11,7 @@ import { AssetSummaryCards } from "@/components/dashboard/AssetSummaryCards";
 import { buttonClassName } from "@/components/ui/Button";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { HoldingsTable } from "@/components/dashboard/HoldingsTable";
+import { LatestNotesWidget } from "@/components/dashboard/LatestNotesWidget";
 import { ValueHistoryChart } from "@/components/dashboard/ValueHistoryChart";
 import { formatCurrency } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
@@ -132,6 +133,8 @@ export default function DashboardPage() {
       ) : (
         <HoldingsTable holdings={holdings} />
       )}
+
+      <LatestNotesWidget />
     </div>
   );
 }

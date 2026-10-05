@@ -73,3 +73,81 @@ body {
   border-radius: 16px;
   box-shadow: var(--shadow-card);
 }
+
+/* Rendered/edited note content (RichTextContent / RichTextEditor). Shared
+   rules keep the read view and the Tiptap edit view visually identical. */
+.rich-text,
+.rich-text-input {
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+/* Notes often contain runs of &nbsp;-joined text or long unbroken tokens
+   (IBANs, URLs). `overflow-wrap: anywhere` (unlike `break-word`) shrinks the
+   min-content size, which auto table layout needs to avoid widening past
+   the panel — without it, one such token forces the whole table wider than
+   its container and clips the Acciones column (the panel uses
+   overflow-hidden). Tiptap's own injected `.ProseMirror` stylesheet rule
+   sets `break-word` and loads after ours, so `.rich-text-input.ProseMirror`
+   (two classes) is needed here to out-specificity it rather than rely on
+   source order.
+*/
+.rich-text,
+.rich-text-input.ProseMirror {
+  overflow-wrap: anywhere;
+}
+
+.rich-text p,
+.rich-text-input p {
+  margin: 0 0 0.5em;
+}
+
+.rich-text p:last-child,
+.rich-text-input p:last-child {
+  margin-bottom: 0;
+}
+
+.rich-text ul,
+.rich-text-input ul {
+  list-style: disc;
+  padding-left: 1.25em;
+  margin: 0 0 0.5em;
+}
+
+.rich-text ol,
+.rich-text-input ol {
+  list-style: decimal;
+  padding-left: 1.25em;
+  margin: 0 0 0.5em;
+}
+
+.rich-text blockquote,
+.rich-text-input blockquote {
+  border-left: 2px solid var(--rule-strong);
+  padding-left: 0.75em;
+  color: var(--ink-muted);
+  margin: 0 0 0.5em;
+}
+
+.rich-text strong,
+.rich-text-input strong {
+  font-weight: 600;
+}
+
+.rich-text em,
+.rich-text-input em {
+  font-style: italic;
+}
+
+.rich-text s,
+.rich-text-input s {
+  text-decoration: line-through;
+}
+
+.rich-text-input p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--ink-muted);
+  pointer-events: none;
+}
