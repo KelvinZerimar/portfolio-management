@@ -4,7 +4,10 @@ import { type ReactNode, useEffect } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TextStyle } from "@tiptap/extension-text-style";
+import { Color } from "@tiptap/extension-color";
 import {
+  Baseline,
   Bold,
   Italic,
   List,
@@ -14,6 +17,17 @@ import {
   Strikethrough,
   Undo,
 } from "lucide-react";
+
+// Fixed palette instead of a free color picker: keeps the toolbar inline (no
+// floating popover that could get clipped by an ancestor's overflow-hidden,
+// as happened with the table panel) and matches the app's existing palette.
+const TEXT_COLORS = [
+  { label: "Rojo", value: "#dc2626" },
+  { label: "Ámbar", value: "#d97706" },
+  { label: "Verde", value: "#16a34a" },
+  { label: "Azul", value: "#2563eb" },
+  { label: "Morado", value: "#4f46e5" },
+];
 
 interface RichTextEditorProps {
   label?: string;
@@ -58,6 +72,8 @@ export function RichTextEditor({ label, value, onChange, placeholder, className 
   const editor = useEditor({
     extensions: [
       StarterKit,
+      TextStyle,
+      Color,
       Placeholder.configure({
         placeholder: placeholder ?? "",
       }),
@@ -129,6 +145,32 @@ export function RichTextEditor({ label, value, onChange, placeholder, className 
           >
             <Quote size={14} strokeWidth={2} aria-hidden />
           </ToolbarButton>
+          <span className="mx-1 h-4 w-px bg-rule" aria-hidden />
+          <span className="flex items-center gap-1 px-0.5" role="group" aria-label="Color de texto">
+            {TEXT_COLORS.map((color) => (
+              <button
+                key={color.value}
+                type="button"
+                aria-label={`Color ${color.label}`}
+                aria-pressed={editor.isActive("textStyle", { color: color.value })}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => editor.chain().focus().setColor(color.value).run()}
+                style={{ backgroundColor: color.value }}
+                className={
+                  "h-4 w-4 rounded-full transition-shadow " +
+                  (editor.isActive("textStyle", { color: color.value })
+                    ? "ring-2 ring-offset-1 ring-brand"
+                    : "ring-1 ring-inset ring-black/10 hover:ring-black/20")
+                }
+              />
+            ))}
+            <ToolbarButton
+              label="Quitar color"
+              onClick={() => editor.chain().focus().unsetColor().run()}
+            >
+              <Baseline size={14} strokeWidth={2} aria-hidden />
+            </ToolbarButton>
+          </span>
           <span className="mx-1 h-4 w-px bg-rule" aria-hidden />
           <ToolbarButton
             label="Deshacer"

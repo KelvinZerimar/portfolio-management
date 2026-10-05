@@ -82,6 +82,21 @@ body {
   line-height: 1.5;
 }
 
+/* Notes often contain runs of &nbsp;-joined text or long unbroken tokens
+   (IBANs, URLs). `overflow-wrap: anywhere` (unlike `break-word`) shrinks the
+   min-content size, which auto table layout needs to avoid widening past
+   the panel — without it, one such token forces the whole table wider than
+   its container and clips the Acciones column (the panel uses
+   overflow-hidden). Tiptap's own injected `.ProseMirror` stylesheet rule
+   sets `break-word` and loads after ours, so `.rich-text-input.ProseMirror`
+   (two classes) is needed here to out-specificity it rather than rely on
+   source order.
+*/
+.rich-text,
+.rich-text-input.ProseMirror {
+  overflow-wrap: anywhere;
+}
+
 .rich-text p,
 .rich-text-input p {
   margin: 0 0 0.5em;
