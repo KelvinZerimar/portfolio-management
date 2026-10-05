@@ -1,7 +1,7 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
-import { Check, X } from "lucide-react";
+import { type FormEvent, useMemo, useState } from "react";
+import { Check, Search, X } from "lucide-react";
 import {
   useCreateNote,
   useDeleteNote,
@@ -11,34 +11,69 @@ import {
 import { Button } from "@/components/ui/Button";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { IconButton } from "@/components/ui/IconButton";
+import { Pagination } from "@/components/ui/Pagination";
+import { RichTextContent } from "@/components/ui/RichTextContent";
+import { isRichTextEmpty, RichTextEditor } from "@/components/ui/RichTextEditor";
 import { RowActions } from "@/components/ui/RowActions";
 import { TextField } from "@/components/ui/TextField";
 import { formatDate } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
 import type { NoteResponse } from "@/types";
 
-function truncate(text: string, max = 80) {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}…`;
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, " ");
 }
 
+const TABLE_COLUMN_COUNT = 5;
+
 export default function NotesPage() {
+  // Notes has no server-side free-text search (its content is encrypted at
+  // rest, so the API can't filter on it cheaply) — fetch the API's max page
+  // size once and search/paginate client-side over that batch.
   const { data, isPending, isError, error } = useNotes({ limit: 100 });
   const createMutation = useCreateNote();
   const deleteMutation = useDeleteNote();
 
-  const items = data?.data ?? [];
+  const allItems = useMemo(() => data?.data ?? [], [data]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [category, setCategory] = useState("");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const filteredItems = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return allItems;
+    return allItems.filter(
+      (item) =>
+        item.category.toLowerCase().includes(query) ||
+        item.title.toLowerCase().includes(query) ||
+        stripHtml(item.content).toLowerCase().includes(query)
+    );
+  }, [allItems, search]);
+
+  const total = filteredItems.length;
+  const totalPages = Math.max(Math.ceil(total / limit), 1);
+  const items = filteredItems.slice((page - 1) * limit, page * limit);
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    setPage(1);
+  }
+
+  function handleLimitChange(value: number) {
+    setLimit(value);
+    setPage(1);
+  }
 
   function handleCreate(e: FormEvent) {
     e.preventDefault();
-    if (!category.trim() || !title.trim() || !content.trim()) return;
+    if (!category.trim() || !title.trim() || isRichTextEmpty(content)) return;
     createMutation.mutate(
-      { category: category.trim(), title: title.trim(), content: content.trim(), isActive },
+      { category: category.trim(), title: title.trim(), content, isActive },
       {
         onSuccess: () => {
           setCategory("");
@@ -51,7 +86,7 @@ export default function NotesPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-6">
+    <div className="mx-auto flex max-w-4xl flex-col gap-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Notas</h1>
         <p className="text-sm text-ink-muted">
@@ -61,6 +96,24 @@ export default function NotesPage() {
       </div>
 
       <section className="panel overflow-hidden">
+        <div className="border-b border-rule px-4 py-3">
+          <label className="relative flex max-w-sm items-center text-xs text-ink-muted">
+            <Search
+              size={14}
+              strokeWidth={1.75}
+              className="pointer-events-none absolute left-3 text-ink-muted"
+              aria-hidden
+            />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              placeholder="Buscar por categoría, título o contenido"
+              className="w-full rounded-lg border border-rule bg-paper py-2 pr-3 pl-9 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand"
+            />
+          </label>
+        </div>
+
         {isPending ? (
           <div className="h-32 animate-pulse bg-paper-raised" />
         ) : isError ? (
@@ -73,15 +126,16 @@ export default function NotesPage() {
                 <th className="px-4 py-2 font-medium">Título</th>
                 <th className="px-4 py-2 font-medium">Contenido</th>
                 <th className="px-4 py-2 font-medium">Creada</th>
-                <th className="px-4 py-2 font-medium">Activa</th>
-                <th className="px-4 py-2 text-right font-medium">Acciones</th>
+                <th className="w-24 px-4 py-2 text-right font-medium">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-ink-muted">
-                    Todavía no hay notas guardadas.
+                  <td colSpan={TABLE_COLUMN_COUNT} className="px-4 py-8 text-center text-ink-muted">
+                    {allItems.length === 0
+                      ? "Todavía no hay notas guardadas."
+                      : "Ninguna nota coincide con la búsqueda."}
                   </td>
                 </tr>
               )}
@@ -95,10 +149,11 @@ export default function NotesPage() {
                   >
                     <td className="px-4 py-2.5 font-medium">{item.category}</td>
                     <td className="px-4 py-2.5">{item.title}</td>
-                    <td className="px-4 py-2.5 text-ink-muted">{truncate(item.content)}</td>
+                    <td className="px-4 py-2.5 text-ink-muted">
+                      <RichTextContent html={item.content} className="line-clamp-2 max-w-sm" />
+                    </td>
                     <td className="px-4 py-2.5 text-ink-muted">{formatDate(item.createdAt)}</td>
-                    <td className="px-4 py-2.5 text-ink-muted">{item.isActive ? "Sí" : "No"}</td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right whitespace-nowrap">
                       <RowActions
                         onEdit={() => setEditingId(item.id)}
                         onDelete={() => deleteMutation.mutate(item.id)}
@@ -112,6 +167,17 @@ export default function NotesPage() {
               )}
             </tbody>
           </table>
+        )}
+
+        {!isPending && !isError && (
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={handleLimitChange}
+          />
         )}
 
         <form
@@ -136,18 +202,13 @@ export default function NotesPage() {
             required
             className="w-40"
           />
-          <label className="flex flex-1 basis-full flex-col gap-1 text-xs text-ink-muted">
-            Contenido
-            <textarea
-              name="content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Contenido de la nota"
-              required
-              rows={3}
-              className="rounded-lg border border-rule bg-paper px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand"
-            />
-          </label>
+          <RichTextEditor
+            label="Contenido"
+            value={content}
+            onChange={setContent}
+            placeholder="Contenido de la nota"
+            className="flex-1 basis-full"
+          />
           <label className="flex items-center gap-2 text-xs text-ink-muted">
             <input
               type="checkbox"
@@ -174,13 +235,12 @@ function EditRow({ item, onDone }: { item: NoteResponse; onDone: () => void }) {
   const [category, setCategory] = useState(item.category);
   const [title, setTitle] = useState(item.title);
   const [content, setContent] = useState(item.content);
-  const [isActive, setIsActive] = useState(item.isActive);
   const updateMutation = useUpdateNote(item.id);
 
   function handleSave() {
-    if (!category.trim() || !title.trim() || !content.trim()) return;
+    if (!category.trim() || !title.trim() || isRichTextEmpty(content)) return;
     updateMutation.mutate(
-      { category: category.trim(), title: title.trim(), content: content.trim(), isActive },
+      { category: category.trim(), title: title.trim(), content, isActive: item.isActive },
       { onSuccess: onDone }
     );
   }
@@ -202,22 +262,10 @@ function EditRow({ item, onDone }: { item: NoteResponse; onDone: () => void }) {
         />
       </td>
       <td className="px-4 py-2">
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          rows={2}
-          className="w-full rounded-lg border border-rule bg-paper px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-brand"
-        />
+        <RichTextEditor value={content} onChange={setContent} />
       </td>
       <td className="px-4 py-2 text-ink-muted">{formatDate(item.createdAt)}</td>
-      <td className="px-4 py-2">
-        <input
-          type="checkbox"
-          checked={isActive}
-          onChange={(e) => setIsActive(e.target.checked)}
-        />
-      </td>
-      <td className="px-4 py-2 text-right">
+      <td className="px-4 py-2 text-right whitespace-nowrap">
         <span className="inline-flex items-center gap-3">
           <IconButton aria-label="Guardar" onClick={handleSave} disabled={updateMutation.isPending}>
             <Check size={14} strokeWidth={1.75} aria-hidden />

@@ -3,13 +3,9 @@
 import Link from "next/link";
 import { useLatestNotes } from "@/hooks/useNotes";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
+import { RichTextContent } from "@/components/ui/RichTextContent";
 import { formatDate } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
-
-function truncate(text: string, max = 100) {
-  if (text.length <= max) return text;
-  return `${text.slice(0, max)}…`;
-}
 
 // Mirrors HoldingsTable's panel shell, but as a simple list — ten items don't
 // need sorting/filtering/export the way a full holdings table does.
@@ -48,7 +44,7 @@ export function LatestNotesWidget() {
                   {note.category}
                 </span>
               </div>
-              <p className="text-sm text-ink-muted">{truncate(note.content)}</p>
+              <RichTextContent html={note.content} className="line-clamp-2 text-sm text-ink-muted" />
               <span className="text-xs text-ink-muted">{formatDate(note.createdAt)}</span>
             </li>
           ))}
