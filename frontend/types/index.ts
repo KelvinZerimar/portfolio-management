@@ -204,6 +204,32 @@ export interface PortfolioAllocationResponse {
   items: PortfolioAllocationItemResponse[];
 }
 
+// ---------- Note ----------
+
+export interface NoteResponse {
+  id: string;
+  category: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  isActive: boolean;
+}
+
+export interface CreateNoteRequest {
+  category: string;
+  title: string;
+  content: string;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface UpdateNoteRequest {
+  category: string;
+  title: string;
+  content: string;
+  isActive: boolean;
+}
+
 // ---------- Portfolio price refresh ----------
 
 export interface RefreshedHoldingItemResponse {
