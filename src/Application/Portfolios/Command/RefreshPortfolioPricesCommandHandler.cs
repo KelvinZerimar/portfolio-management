@@ -18,7 +18,8 @@ public sealed class RefreshPortfolioPricesCommandHandler(
     IPortfolioRepository portfolioRepository,
     IPortfolioEntryRepository portfolioEntryRepository,
     ICoinGeckoClient coinGeckoClient,
-    ICurrentUserProvider currentUserProvider
+    ICurrentUserProvider currentUserProvider,
+    TimeProvider timeProvider
     ) : IRequestHandler<RefreshPortfolioPricesCommand, ErrorOr<RefreshPortfolioPricesResponse>>
 {
     // The app targets Spain-based users (EUR/es-ES throughout); "today" for the once-a-day
@@ -34,7 +35,7 @@ public sealed class RefreshPortfolioPricesCommandHandler(
             return Error.NotFound("Portfolio.NotFound", $"Portfolio with ID '{command.Id}' was not found.");
         }
 
-        var now = DateTime.UtcNow;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         var localToday = TimeZoneInfo.ConvertTimeFromUtc(now, SpainTimeZone).Date;
         if (portfolio.LastPriceRefreshAt.HasValue &&
             TimeZoneInfo.ConvertTimeFromUtc(portfolio.LastPriceRefreshAt.Value, SpainTimeZone).Date == localToday)

@@ -23,9 +23,21 @@ public sealed class IdempotencyFilter(HybridCache cache, ICurrentUserProvider cu
         var cacheKey = $"idempotency:{currentUser.UserId}:{context.HttpContext.Request.Path}:{key}";
         var requestBodyHash = ComputeRequestBodyHash(context);
 
+        // HybridCache's factory can run on an execution context detached from this request
+        // (its stampede de-duplication path), which drops the AsyncLocal-backed HttpContext
+        // that IHttpContextAccessor (and therefore ICurrentUserProvider) depend on. Re-anchor
+        // it explicitly from the context captured here by closure so downstream handlers can
+        // still resolve the authenticated user.
+        var httpContext = context.HttpContext;
+        var httpContextAccessor = httpContext.RequestServices.GetRequiredService<IHttpContextAccessor>();
+
         var cached = await cache.GetOrCreateAsync(
             cacheKey,
-            async _ => CachedIdempotentResult.From(await next(context), requestBodyHash),
+            async _ =>
+            {
+                httpContextAccessor.HttpContext = httpContext;
+                return CachedIdempotentResult.From(await next(context), requestBodyHash);
+            },
             Options,
             tags: ["idempotency"],
             cancellationToken: context.HttpContext.RequestAborted);
