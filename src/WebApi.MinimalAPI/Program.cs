@@ -1,9 +1,11 @@
+using System.Diagnostics;
 using Application;
 using HealthChecks.UI.Client;
 using Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
 using Serilog;
+using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using WebApi.MinimalAPI;
 using WebApi.MinimalAPI.Endpoints.Common;
 
@@ -13,7 +15,18 @@ builder.Services
     .AddApplication(builder.Configuration)
     .AddPresentation(builder.Configuration);
 
-builder.Host.UseSerilog((context, loggerConfig) => loggerConfig.ReadFrom.Configuration(context.Configuration));
+builder.Host.UseSerilog((context, loggerConfig) =>
+{
+    loggerConfig
+        .ReadFrom.Configuration(context.Configuration)
+        .WriteTo.Conditional(static _ => Debugger.IsAttached, static writeTo => writeTo.Console());
+
+    var appInsightsConnectionString = context.Configuration["ApplicationInsights:ConnectionString"];
+    if (!Debugger.IsAttached && !string.IsNullOrEmpty(appInsightsConnectionString))
+    {
+        loggerConfig.WriteTo.ApplicationInsights(appInsightsConnectionString, new TraceTelemetryConverter());
+    }
+});
 
 builder.Services.AddCors(options =>
 {
