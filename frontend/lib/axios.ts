@@ -13,6 +13,12 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // The backend's IdempotencyFilter requires this header on creation POSTs
+  // (Portfolio, PortfolioEntry, CryptoCurrency, Exchange); harmless on other
+  // requests since only those endpoints check for it.
+  if (config.method === "post" && !config.headers["Idempotency-Key"]) {
+    config.headers["Idempotency-Key"] = crypto.randomUUID();
+  }
   return config;
 });
 

@@ -5,8 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using Serilog;
-using System.Diagnostics;
 using System.Reflection;
 using Infrastructure.Common.Options;
 using Infrastructure.Common.Persistence.Contexts;
@@ -38,7 +36,6 @@ public static class DependencyInjection
     {
         services
             .AddConfigurationOptions(configuration)
-            .AddLoggingConfiguration(configuration)
             .AddBackgroundServices(configuration)
             .AddDbContexts(configuration)
             .AddCosmosDb(configuration)
@@ -112,16 +109,6 @@ public static class DependencyInjection
                     .EnableRetryOnFailure())
                 .UseSnakeCaseNamingConvention());
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
-        return services;
-    }
-
-    private static IServiceCollection AddLoggingConfiguration(this IServiceCollection services,
-        IConfiguration configuration)
-    {
-        services.AddSerilog(loggerConfiguration => loggerConfiguration
-            .ReadFrom.Configuration(configuration)
-            .WriteTo.Conditional(static _ => Debugger.IsAttached, static writeTo => writeTo.Console()));
-
         return services;
     }
 
