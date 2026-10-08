@@ -6,6 +6,7 @@ using WebApi.MinimalAPI.Endpoints.PortfolioEntries;
 using WebApi.MinimalAPI.Endpoints.Notes;
 
 namespace WebApi.MinimalAPI.Endpoints.Common;
+
 public static class EndpointRegistrar
 {
     public static WebApplication RegisterEndpoints(this WebApplication app)

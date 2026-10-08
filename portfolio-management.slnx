@@ -10,7 +10,10 @@
 <BuildDependency Project="src/Application/Application.csproj" />
 <BuildDependency Project="src/Infrastructure/Infrastructure.csproj" />
 </Project>
-<Project Path="src/Worker/Worker.csproj" Id="3db7ac66-7668-45da-bd5a-ce22f1eb8999" />
+<Project Path="src/Worker/Worker.csproj" Id="3db7ac66-7668-45da-bd5a-ce22f1eb8999">
+<BuildDependency Project="src/Application/Application.csproj" />
+<BuildDependency Project="src/Infrastructure/Infrastructure.csproj" />
+</Project>
 </Folder>
 <Folder Name="/tests/">
 <Project Path="tests/Domain.Tests/Domain.Tests.csproj" />

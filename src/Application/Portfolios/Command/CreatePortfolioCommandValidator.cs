@@ -2,7 +2,7 @@
 
 namespace Application.Portfolios.Command;
 
-public sealed class CreatePortfolioCommandValidator: AbstractValidator<CreatePortfolioCommand>
+public sealed class CreatePortfolioCommandValidator : AbstractValidator<CreatePortfolioCommand>
 {
     public CreatePortfolioCommandValidator()
     {

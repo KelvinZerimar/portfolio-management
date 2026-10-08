@@ -70,7 +70,7 @@ public static class DependencyInjection
         });
 
         return services;
-    }  
+    }
 
     private static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {

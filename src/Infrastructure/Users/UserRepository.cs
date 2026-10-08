@@ -10,4 +10,7 @@ internal sealed class UserRepository(AppDbContext dbContext) : Repository<User>(
 {
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
         => dbContext.Set<User>().FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+    public Task<User?> GetByIdAsync(long id, CancellationToken cancellationToken)
+        => dbContext.Set<User>().FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
 }

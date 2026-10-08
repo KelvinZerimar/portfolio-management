@@ -14,4 +14,7 @@ internal sealed class PortfolioRepository(AppDbContext dbContext) : Repository<P
 
     public Task<Portfolio?> GetPortfolioByNameAsync(long userId, string name, CancellationToken cancellationToken)
         => dbContext.Set<Portfolio>().FirstOrDefaultAsync(p => p.UserId == userId && p.Name == name, cancellationToken);
+
+    public Task<List<Portfolio>> GetAllAsync(CancellationToken cancellationToken)
+        => dbContext.Set<Portfolio>().ToListAsync(cancellationToken);
 }

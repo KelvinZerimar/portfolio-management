@@ -5,6 +5,26 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Intentionally the same UserSecretsId as WebApi.MinimalAPI: the Worker reuses AddInfrastructure's
+         config (DB connection string, Jwt, CoinGecko, Encryption) plus its own Email settings, and both
+         processes are run by the same single developer, so sharing one secrets.json avoids keeping two
+         copies of the same secrets in sync. -->
+    <UserSecretsId>daa01fcc-134f-4f9c-b600-67504a448d77</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Application\Application.csproj" />
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+  </ItemGroup>
 
 </Project>

@@ -15,6 +15,8 @@ using Infrastructure.Exchanges;
 using Infrastructure.CryptoCurrencies;
 using Infrastructure.PortfolioEntries;
 using Infrastructure.Notes;
+using Infrastructure.Reports;
+using Application.Reports.Interfaces;
 using Application.Common.Security;
 using Application.Portfolios.Interfaces;
 using Application.Users.Interfaces;
@@ -135,6 +137,12 @@ public static class DependencyInjection
                 client.DefaultRequestHeaders.Add("x-cg-demo-api-key", options.ApiKey);
             }
         });
+
+        // Registered here (not just in Worker's AddReportScheduling) so that MediatR's handler for
+        // SendPortfolioStatusReportCommand - scanned from the shared Application assembly - stays
+        // structurally resolvable in the API process too. Only the Worker actually binds/validates
+        // EmailOptions and runs the background service that sends through it.
+        services.AddScoped<IEmailSender, MailKitEmailSender>();
 
         return services;
     }
