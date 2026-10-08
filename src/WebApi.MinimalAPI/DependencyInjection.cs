@@ -15,6 +15,7 @@ namespace WebApi.MinimalAPI;
 
 public static class DependencyInjection
 {
+    public const string CorsPolicyName = "portfolio-dashboard";
     public static IServiceCollection AddPresentation(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHttpContextAccessor();
@@ -50,8 +51,26 @@ public static class DependencyInjection
             });
 #pragma warning restore IL2026
 
+        services.AddCors(options =>
+        {
+            options.AddPolicy(CorsPolicyName, policy =>
+            {
+                policy
+                    .WithOrigins(
+                        "http://localhost:3000",
+                        "https://localhost:3000",
+                        "http://localhost:3001",
+                        "https://localhost:3001",
+                        "https://portfolio-mgmt-web.blackflower-98fc7892.northeurope.azurecontainerapps.io"
+                    )
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+            });
+        });
+
         return services;
-    }
+    }  
 
     private static IServiceCollection AddJwtAuthentication(this IServiceCollection services, IConfiguration configuration)
     {

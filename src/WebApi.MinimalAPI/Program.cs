@@ -1,15 +1,11 @@
-using System.Diagnostics;
 using Application;
 using HealthChecks.UI.Client;
 using Infrastructure;
-using Microsoft.ApplicationInsights.Channel;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Scalar.AspNetCore;
-using Serilog;
-using Serilog.Sinks.ApplicationInsights.TelemetryConverters;
 using WebApi.MinimalAPI;
 using WebApi.MinimalAPI.Endpoints.Common;
+using WebApi.MinimalAPI.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services
@@ -17,44 +13,11 @@ builder.Services
     .AddApplication(builder.Configuration)
     .AddPresentation(builder.Configuration);
 
-builder.Host.UseSerilog((context, loggerConfig) =>
-{
-    loggerConfig
-        .ReadFrom.Configuration(context.Configuration)
-        .WriteTo.Conditional(static _ => Debugger.IsAttached, static writeTo => writeTo.Console());
+builder.AddSerilogLogging();
 
-    var appInsightsConnectionString = context.Configuration["ApplicationInsights:ConnectionString"];
-    if (!Debugger.IsAttached && !string.IsNullOrEmpty(appInsightsConnectionString))
-    {
-        var telemetryConfiguration = new TelemetryConfiguration { ConnectionString = appInsightsConnectionString };
-        telemetryConfiguration.TelemetryInitializers.Add(new CloudRoleNameTelemetryInitializer());
-
-        loggerConfig.WriteTo.ApplicationInsights(telemetryConfiguration, new TraceTelemetryConverter());
-    }
-});
-
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("portfolio-dashboard", policy =>
-    {
-        policy
-            .WithOrigins(
-                "http://localhost:3000",
-                "https://localhost:3000",
-                "http://localhost:3001",
-                "https://localhost:3001",
-                "https://portfolio-mgmt-web.blackflower-98fc7892.northeurope.azurecontainerapps.io"
-            )
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
-    });
-});
-
-//
 var app = builder.Build();
 await app.Services.EnsureCosmosDbInitializedAsync();
-app.UseCors("portfolio-dashboard");
+app.UseCors(WebApi.MinimalAPI.DependencyInjection.CorsPolicyName);
 
 if (app.Environment.IsDevelopment())
 {
@@ -79,11 +42,4 @@ app.MapHealthChecks("/health/json", new HealthCheckOptions
 });
 app.MapHealthChecks("/health");
 app.Run();
-
-internal sealed class CloudRoleNameTelemetryInitializer : ITelemetryInitializer
-{
-    private static readonly string RoleName = typeof(Program).Assembly.GetName().Name ?? "WebApi.MinimalAPI";
-
-    public void Initialize(ITelemetry telemetry) => telemetry.Context.Cloud.RoleName = RoleName;
-}
 
