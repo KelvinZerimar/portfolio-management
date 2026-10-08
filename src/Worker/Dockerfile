@@ -1,6 +1,9 @@
-# Worker no sirve HTTP (sin ingress en el Container App) - imagen base runtime, no aspnet.
+# Worker no sirve HTTP, pero Infrastructure trae paquetes AspNetCore.HealthChecks.UI* que
+# dependen del framework compartido Microsoft.AspNetCore.App - eso se propaga transitivamente
+# al Worker, así que la imagen final debe ser aspnet (no runtime a secas) o falla en arranque
+# con "No frameworks were found".
 
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
 
