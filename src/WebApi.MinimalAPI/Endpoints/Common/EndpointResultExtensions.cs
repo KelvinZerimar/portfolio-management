@@ -15,8 +15,8 @@ public static class EndpointResultExtensions
         {
             ErrorType.NotFound => Results.NotFound(errors),
             ErrorType.Conflict => Results.Conflict(errors),
-            ErrorType.Unauthorized => Results.Unauthorized(),
-            ErrorType.Forbidden => Results.Forbid(),
+            ErrorType.Unauthorized => Results.Json(errors, statusCode: StatusCodes.Status401Unauthorized),
+            ErrorType.Forbidden => Results.Json(errors, statusCode: StatusCodes.Status403Forbidden),
             _ => Results.BadRequest(errors),
         };
     }

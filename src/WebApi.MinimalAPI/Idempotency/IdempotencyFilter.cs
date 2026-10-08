@@ -2,8 +2,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Application.Common.Security;
+using ErrorOr;
 using MediatR;
 using Microsoft.Extensions.Caching.Hybrid;
+using WebApi.MinimalAPI.Endpoints.Common;
 
 namespace WebApi.MinimalAPI.Idempotency;
 
@@ -17,7 +19,10 @@ public sealed class IdempotencyFilter(HybridCache cache, ICurrentUserProvider cu
     {
         if (!context.HttpContext.Request.Headers.TryGetValue(HeaderName, out var key) || string.IsNullOrWhiteSpace(key))
         {
-            return Results.BadRequest($"The '{HeaderName}' header is required.");
+            return new List<Error>
+            {
+                Error.Validation("Idempotency.MissingHeader", $"The '{HeaderName}' header is required."),
+            }.ToProblemResult();
         }
 
         var cacheKey = $"idempotency:{currentUser.UserId}:{context.HttpContext.Request.Path}:{key}";
@@ -44,8 +49,17 @@ public sealed class IdempotencyFilter(HybridCache cache, ICurrentUserProvider cu
 
         if (cached.RequestBodyHash != requestBodyHash)
         {
-            return Results.UnprocessableEntity(
-                $"The '{HeaderName}' header was already used with a different request body.");
+            // Not expressible via ErrorOr.ToProblemResult() (no ErrorType maps to 422), so the
+            // body is built by hand here — same List<Error> shape as the rest of the API, just
+            // with the 422 status code this case is documented to return (see
+            // docs/idempotency-post-endpoints.md).
+            var errors = new List<Error>
+            {
+                Error.Validation(
+                    "Idempotency.KeyReused",
+                    $"The '{HeaderName}' header was already used with a different request body."),
+            };
+            return Results.Json(errors, statusCode: StatusCodes.Status422UnprocessableEntity);
         }
 
         return cached.ToResult();
