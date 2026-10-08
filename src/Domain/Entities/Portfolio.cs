@@ -13,6 +13,7 @@ public sealed class Portfolio : Entity
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public DateTime? LastPriceRefreshAt { get; set; }
+    public DateTime? LastStatusReportSentAt { get; set; }
 
     // Property navigation for related PortfolioEntry entities
     public List<PortfolioEntry> Entries { get; set; } = new List<PortfolioEntry>();
@@ -47,6 +48,26 @@ public sealed class Portfolio : Entity
             .Where(e => e.PortfolioId == Id && e.CryptoCurrencyId == cryptoCurrencyId)
             .OrderByDescending(e => e.RecordedAt)
             .ToList();
+    }
+
+    /// <summary>
+    /// Summarizes how the portfolio's value moved over a period, for status-report purposes:
+    /// value at each end of the period (per <see cref="GetPortfolioValueByDate"/>) plus a
+    /// per-asset breakdown of the closing holdings.
+    /// </summary>
+    public PortfolioStatusReport GetStatusReport(List<PortfolioEntry> entries, DateTime periodStart, DateTime periodEnd)
+    {
+        var valueAtStart = GetPortfolioValueByDate(entries, periodStart);
+        var valueAtEnd = GetPortfolioValueByDate(entries, periodEnd);
+        var changeAmount = valueAtEnd - valueAtStart;
+        var changePercentage = valueAtStart == 0m ? (decimal?)null : Math.Round(changeAmount / valueAtStart * 100m, 2);
+
+        var holdings = GetHoldingsAsOf(entries, periodEnd)
+            .Select(e => new PortfolioHoldingValue(e.CryptoCurrencyId, e.CryptoCurrency.Symbol, e.Quantity, e.Quantity * e.PricePerUnit))
+            .OrderByDescending(h => h.Value)
+            .ToList();
+
+        return new PortfolioStatusReport(periodStart.Date, periodEnd.Date, valueAtStart, valueAtEnd, changeAmount, changePercentage, holdings);
     }
 
     /// <summary>

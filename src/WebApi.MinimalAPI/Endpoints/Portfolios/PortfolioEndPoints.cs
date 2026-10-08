@@ -1,5 +1,6 @@
 ﻿using Application.Portfolios.Command;
 using Application.Portfolios.Query;
+using Application.Reports.Command;
 using Asp.Versioning.Conventions;
 using Contracts.Common;
 using Contracts.Portfolios;
@@ -114,6 +115,15 @@ public static class PortfolioEndPoints
            .Produces<RefreshPortfolioPricesResponse>()
            .Produces(404)
            .Produces(409)
+           .Produces<List<Error>>(400);
+
+        bases.MapPost("{id:long}/send-status-report", async (ISender mediatr, long id, DateTime? periodStart, DateTime? periodEnd) =>
+        {
+            var result = await mediatr.Send(new TriggerPortfolioStatusReportCommand(id, periodStart, periodEnd));
+            return result.Match(_ => Results.NoContent(), errors => errors.ToProblemResult());
+        })
+           .Produces(204)
+           .Produces(404)
            .Produces<List<Error>>(400);
 
         return app;

@@ -220,4 +220,47 @@ public class PortfolioTests
             new PortfolioValuationPoint(jan1, 0m),
             new PortfolioValuationPoint(jan5, 50m));
     }
+
+    [Fact]
+    public void GetStatusReport_ReturnsValueChangeAndHoldingsBreakdownForThePeriod()
+    {
+        var portfolio = new Portfolio();
+        var periodStart = new DateTime(2026, 1, 1);
+        var periodEnd = new DateTime(2026, 1, 31);
+        var entries = new List<PortfolioEntry>
+        {
+            CreateEntry(portfolio.Id, 1, 1, 1m, 100m, new DateTime(2025, 12, 20), symbol: "BTC"),
+            CreateEntry(portfolio.Id, 1, 1, 1m, 150m, new DateTime(2026, 1, 15), symbol: "BTC"),
+            CreateEntry(portfolio.Id, 2, 1, 2m, 20m, new DateTime(2026, 1, 10), symbol: "ETH"),
+        };
+
+        var report = portfolio.GetStatusReport(entries, periodStart, periodEnd);
+
+        report.PeriodStart.Should().Be(periodStart.Date);
+        report.PeriodEnd.Should().Be(periodEnd.Date);
+        report.ValueAtPeriodStart.Should().Be(100m); // only the Dec 20th BTC entry applies as of Jan 1st
+        report.ValueAtPeriodEnd.Should().Be(150m + 2m * 20m);
+        report.ChangeAmount.Should().Be(150m + 2m * 20m - 100m);
+        report.ChangePercentage.Should().Be(Math.Round((150m + 2m * 20m - 100m) / 100m * 100m, 2));
+        report.Holdings.Should().HaveCount(2);
+        report.Holdings.Should().Contain(h => h.CryptoCurrencyId == 1 && h.Symbol == "BTC" && h.Value == 150m);
+        report.Holdings.Should().Contain(h => h.CryptoCurrencyId == 2 && h.Symbol == "ETH" && h.Value == 40m);
+    }
+
+    [Fact]
+    public void GetStatusReport_WithZeroValueAtPeriodStart_ReturnsNullChangePercentage()
+    {
+        var portfolio = new Portfolio();
+        var periodStart = new DateTime(2026, 1, 1);
+        var periodEnd = new DateTime(2026, 1, 31);
+        var entries = new List<PortfolioEntry>
+        {
+            CreateEntry(portfolio.Id, 1, 1, 1m, 100m, new DateTime(2026, 1, 15)),
+        };
+
+        var report = portfolio.GetStatusReport(entries, periodStart, periodEnd);
+
+        report.ValueAtPeriodStart.Should().Be(0m);
+        report.ChangePercentage.Should().BeNull();
+    }
 }

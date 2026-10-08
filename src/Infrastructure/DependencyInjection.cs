@@ -15,6 +15,8 @@ using Infrastructure.Exchanges;
 using Infrastructure.CryptoCurrencies;
 using Infrastructure.PortfolioEntries;
 using Infrastructure.Notes;
+using Infrastructure.Reports;
+using Application.Reports.Interfaces;
 using Application.Common.Security;
 using Application.Portfolios.Interfaces;
 using Application.Users.Interfaces;
@@ -136,6 +138,12 @@ public static class DependencyInjection
             }
         });
 
+        // Registered here (not just in Worker's AddReportScheduling) so that MediatR's handler for
+        // SendPortfolioStatusReportCommand - scanned from the shared Application assembly - stays
+        // structurally resolvable in the API process too. Only the Worker actually binds/validates
+        // EmailOptions and runs the background service that sends through it.
+        services.AddScoped<IEmailSender, MailKitEmailSender>();
+
         return services;
     }
 
@@ -197,6 +205,12 @@ public static class DependencyInjection
             .Bind(configuration.GetRequiredSection(EncryptionOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
+
+        // Bound here (not required/validated, unlike the sections above) so that MailKitEmailSender
+        // reads real values in BOTH processes - the API needs this for the manual "send now" endpoint,
+        // even though only the Worker's AddReportScheduling enforces (GetRequiredSection + ValidateOnStart)
+        // that Email is actually configured before it starts its scheduled sweep.
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
 
         return services;
     }
