@@ -1,6 +1,7 @@
 using Application.Reports.Interfaces;
 using Infrastructure.Common.Options;
 using MailKit.Net.Smtp;
+using MailKit.Security;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MimeKit;
@@ -24,7 +25,9 @@ internal sealed class MailKitEmailSender(
         message.Body = new TextPart(TextFormat.Html) { Text = htmlBody };
 
         using var client = new SmtpClient();
-        await client.ConnectAsync(settings.SmtpHost, settings.SmtpPort, settings.UseSsl, cancellationToken);
+        // Auto negotiates the right scheme for the port - STARTTLS on 587, implicit SSL on 465 -
+        // instead of needing a separate UseSsl flag that's easy to misconfigure for 587.
+        await client.ConnectAsync(settings.SmtpHost, settings.SmtpPort, SecureSocketOptions.Auto, cancellationToken);
         if (!string.IsNullOrEmpty(settings.Username))
         {
             await client.AuthenticateAsync(settings.Username, settings.Password ?? string.Empty, cancellationToken);

@@ -11,8 +11,6 @@ public sealed class EmailOptions
 
     public int SmtpPort { get; set; } = 587;
 
-    public bool UseSsl { get; set; } = true;
-
     public string? Username { get; set; }
 
     // Set via `dotnet user-secrets`, never in appsettings.json.

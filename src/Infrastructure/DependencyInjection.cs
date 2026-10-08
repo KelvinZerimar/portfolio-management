@@ -206,6 +206,12 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
+        // Bound here (not required/validated, unlike the sections above) so that MailKitEmailSender
+        // reads real values in BOTH processes - the API needs this for the manual "send now" endpoint,
+        // even though only the Worker's AddReportScheduling enforces (GetRequiredSection + ValidateOnStart)
+        // that Email is actually configured before it starts its scheduled sweep.
+        services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+
         return services;
     }
 
