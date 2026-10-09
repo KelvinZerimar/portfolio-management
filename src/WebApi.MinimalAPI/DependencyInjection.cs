@@ -1,4 +1,5 @@
 ﻿
+using System.Reflection;
 using System.Text;
 using Application.Common.Security;
 using Asp.Versioning;
@@ -30,6 +31,15 @@ public static class DependencyInjection
         services.AddExceptionHandler<GlobalExceptionHandler>();
 
         services.AddOutputCache();
+
+        // The health-check *dashboard* (web UI), as opposed to the base checks registered in
+        // Infrastructure.AddHealthChecksForDependencies - needs IServer, so it only belongs here,
+        // in the web presentation layer, not in the Infrastructure shared with Worker.
+        services.AddHealthChecksUI(setup =>
+        {
+            setup.AddHealthCheckEndpoint("General", "/health/json");
+            setup.SetHeaderText(Assembly.GetEntryAssembly()?.GetName().Name ?? "Healthcheck");
+        }).AddInMemoryStorage();
 
         services.AddResponseCompression(options =>
         {

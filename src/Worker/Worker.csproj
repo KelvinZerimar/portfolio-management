@@ -30,6 +30,13 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <!-- Worker has no direct EF Core package of its own, so without this pin NuGet's restore
+         resolves Microsoft.EntityFrameworkCore.Relational to the lowest version satisfying its
+         transitive constraints (10.0.4) instead of the 10.0.12 Infrastructure.csproj was actually
+         compiled against - only 10.0.4 then gets copied to the output folder, and the app throws
+         FileNotFoundException for 10.0.12 at the first EF Core call. Must match Infrastructure's
+         Microsoft.EntityFrameworkCore version exactly. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.12" />
   </ItemGroup>
 
 </Project>

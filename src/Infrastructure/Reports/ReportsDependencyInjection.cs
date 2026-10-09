@@ -1,3 +1,4 @@
+using Application.Common.Security;
 using Infrastructure.Common.Options;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,7 @@ public static class ReportsDependencyInjection
 
         services.Configure<ReportSchedulingOptions>(configuration.GetSection(ReportSchedulingOptions.SectionName));
 
+        services.AddSingleton<ICurrentUserProvider, BackgroundCurrentUserProvider>();
         services.AddHostedService<PortfolioStatusReportBackgroundService>();
 
         return services;

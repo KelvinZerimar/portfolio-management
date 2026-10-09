@@ -24,6 +24,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi().WithDocumentPerVersion();
     app.MapScalarApiReference();
 }
+
 app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
