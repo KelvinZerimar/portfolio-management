@@ -4,11 +4,15 @@
 
 Requerimiento: enviar por email un resumen periódico del estado de cada portafolio. Se evaluó
 también incluir un análisis del mercado del mes anterior con predicciones de subida/bajada citando
-fuentes de internet, pero esa parte quedó fuera de alcance a propósito (Fase 1 = solo el informe de
-status): una predicción no tiene una "fuente de internet" verificable que la respalde como dato, y
-presentarla con el mismo nivel de confianza que el valor real del portafolio sería engañoso para un
-único usuario que toma decisiones con esta información. Puede retomarse como Fase 2 si se decide
-asumir ese riesgo explícitamente (con disclaimer, y separada del dato de valuación real).
+fuentes de internet. Se dividió en dos fases:
+
+- **Fase 1** (implementada primero): solo el informe de status (valor, variación, holdings).
+- **Fase 2** (implementada después, esta misma sesión): sección "mercado del mes anterior" con
+  **datos duros** de CoinGecko (variación %, máx/mín del período), presentada como hecho histórico
+  con link a la fuente — nunca una predicción. La parte de *predicción* se descartó deliberadamente:
+  no existe una "fuente de internet" verificable que respalde un pronóstico como dato, y
+  presentarlo con el mismo nivel de confianza que el valor real del portafolio sería engañoso para
+  un único usuario que toma decisiones con esta información.
 
 ## Arquitectura
 
@@ -94,6 +98,26 @@ Comparte el mismo `UserSecretsId` que `WebApi.MinimalAPI` (en vez de uno propio)
 en dos sitios los secretos que ya necesita vía `AddInfrastructure` (cadena de conexión, `Jwt`,
 `CoinGecko`, `Encryption`) más los nuevos de `Email`.
 
+## Fase 2 — sección "mercado del mes anterior" (CoinGecko histórico)
+
+- `ICoinGeckoClient.GetMarketSummaryAsync(coinGeckoIds, from, to, ct)` (nuevo método, junto a
+  `GetEurPricesAsync` existente): usa el endpoint `coins/{id}/market_chart/range` de CoinGecko (uno
+  por activo — a diferencia de `simple/price`, no hay versión batch para históricos). `from`/`to`
+  son límites de día completo; `to` se extiende internamente a `to.AddDays(1).AddSeconds(-1)` para
+  cubrir ese último día entero, no solo su medianoche. Devuelve `CoinGeckoMarketSummary` (Open,
+  Close, High, Low, `ChangePercentage` nullable) calculado a partir de la serie `prices` cruda —
+  verificado contra la API real (`curl` directo a `market_chart/range`) para confirmar la forma
+  exacta de la respuesta (`{"prices":[[timestamp_ms, precio], ...]}`).
+- Cacheado 24h por `(coinGeckoId, from, to)` vía `HybridCache` — un mes ya cerrado no cambia, a
+  diferencia del precio actual (cacheado solo 5 min en `GetEurPricesAsync`).
+- **Best-effort por diseño, nunca bloquea el envío del informe**: si CoinGecko falla (o un activo no
+  tiene `CoinGeckoId` mapeado), `SendPortfolioStatusReportCommandHandler.BuildMarketRowsAsync`
+  simplemente omite esa fila / toda la sección — un `LogWarning`, no un error que impida enviar el
+  resto del email.
+- Plantilla: `PortfolioMarketRow` (record en `PortfolioStatusReportEmailTemplate.cs`) + tabla
+  condicional (vacía si no hay filas) con variación %, máx, mín y un link `coingecko.com/en/coins/{id}`
+  como fuente, más un disclaimer de que es información retrospectiva, no una recomendación.
+
 ## Endpoint manual
 
 `POST /api/v1/Portfolio/{id}/send-status-report` (autenticado, mismo grupo que el resto de
@@ -166,4 +190,5 @@ zone`, *nullable*) a `Portfolios`, mismo patrón que `AddLastPriceRefreshAtToPor
   valor de inicio en cero → `ChangePercentage` nulo).
 - `tests/Application.Tests/Reports/Command/`: `SendPortfolioStatusReportCommandHandlerTests` y
   `TriggerPortfolioStatusReportCommandHandlerTests` (NotFound por portafolio inexistente/ajeno,
-  envío exitoso con sello de fecha, período por defecto vs. explícito).
+  envío exitoso con sello de fecha, período por defecto vs. explícito, sección de mercado presente
+  cuando CoinGecko responde y ausente cuando falla).
