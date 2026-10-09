@@ -39,6 +39,7 @@ public static class DependencyInjection
         {
             setup.AddHealthCheckEndpoint("General", "/health/json");
             setup.SetHeaderText(Assembly.GetEntryAssembly()?.GetName().Name ?? "Healthcheck");
+            setup.SetEvaluationTimeInSeconds(300);
         }).AddInMemoryStorage();
 
         services.AddResponseCompression(options =>
