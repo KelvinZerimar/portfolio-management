@@ -5,7 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
-using System.Reflection;
 using Infrastructure.Common.Options;
 using Infrastructure.Common.Persistence.Contexts;
 using Infrastructure.Common.Security;
@@ -215,17 +214,14 @@ public static class DependencyInjection
         return services;
     }
 
+    // Only the base checks - no AddHealthChecksUI() here. That's an ASP.NET Core web dashboard
+    // (needs IServer, middleware, MapHealthChecksUI()) and belongs in WebApi.MinimalAPI's
+    // AddPresentation(); registering it here broke the Worker (no IServer in a non-web Generic
+    // Host) as soon as ASP.NET Core's strict DI validation kicked in under Development.
     private static void AddHealthChecksForDependencies(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddHealthChecks()
             .AddNpgSql(configuration.GetConnectionString("Database")!, name: "postgres")
             .AddAzureCosmosDB(name: "cosmosdb");
-
-        services.AddHealthChecksUI(setup =>
-        {
-            setup.AddHealthCheckEndpoint("General", "/health/json");
-            setup.SetHeaderText(Assembly.GetEntryAssembly()?.GetName().Name ?? "Healthcheck");
-        }
-        ).AddInMemoryStorage();
     }
 }
