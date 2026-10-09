@@ -14,6 +14,7 @@ builder.Services
     .AddPresentation(builder.Configuration);
 
 builder.AddSerilogLogging();
+builder.AddAzureMonitorObservability();
 
 var app = builder.Build();
 await app.Services.EnsureCosmosDbInitializedAsync();
