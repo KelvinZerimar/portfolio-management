@@ -180,13 +180,15 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
                     .map((entry) => ({ ...entry, value: row.byAsset[entry.symbol] ?? 0 }))
                     .filter((entry) => entry.value > 0)
                     .sort((a, b) => b.value - a.value);
-                  // Nothing to break down for a single-asset portfolio (no `legend`) —
-                  // the header reading above already covers the total.
-                  if (breakdown.length === 0) return null;
                   return (
                     <div className="panel px-3 py-2.5 text-xs">
                       <p className="mb-1 text-ink-muted">{formatDate(row.date)}</p>
                       <ul className="space-y-0.5">
+                        <li className="flex items-center gap-2 font-semibold">
+                          <span aria-hidden className="h-0.5 w-2.5 shrink-0 bg-ink" />
+                          <span className="flex-1">Total</span>
+                          <span className="tabular">{formatCurrency(row.value)}</span>
+                        </li>
                         {breakdown.map((entry) => (
                           <li key={entry.symbol} className="flex items-center gap-2">
                             <span
