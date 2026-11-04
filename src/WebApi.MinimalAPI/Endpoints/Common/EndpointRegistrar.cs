@@ -4,6 +4,7 @@ using WebApi.MinimalAPI.Endpoints.Exchanges;
 using WebApi.MinimalAPI.Endpoints.CryptoCurrencies;
 using WebApi.MinimalAPI.Endpoints.PortfolioEntries;
 using WebApi.MinimalAPI.Endpoints.Notes;
+using WebApi.MinimalAPI.Endpoints.Agent;
 
 namespace WebApi.MinimalAPI.Endpoints.Common;
 
@@ -17,6 +18,7 @@ public static class EndpointRegistrar
         app.RegisterCryptoCurrencyEndpoints();
         app.RegisterPortfolioEntryEndpoints();
         app.RegisterNoteEndpoints();
+        app.RegisterAgentEndpoints();
         return app;
     }
 }

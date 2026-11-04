@@ -15,8 +15,12 @@ using Infrastructure.CryptoCurrencies;
 using Infrastructure.PortfolioEntries;
 using Infrastructure.Notes;
 using Infrastructure.Reports;
+using Infrastructure.Agent;
+using Infrastructure.Agent.Filters;
+using Infrastructure.Agent.Plugins;
 using Application.Reports.Interfaces;
 using Application.Common.Security;
+using Application.Agent.Interfaces;
 using Application.Portfolios.Interfaces;
 using Application.Users.Interfaces;
 using Application.Exchanges.Interfaces;
@@ -45,7 +49,33 @@ public static class DependencyInjection
             .AddAdapters()
             .AddSecurity()
             .AddCaching()
+            .AddAgent()
             .AddHealthChecksForDependencies(configuration);
+
+        return services;
+    }
+
+    // Semantic Kernel tool-calling plumbing: transient Kernel per conversation (never a
+    // singleton - plugins/filters below carry the authenticated user's ambient identity),
+    // guardrail filters wired into the kernel itself rather than around the HttpClient, and
+    // plugins that never accept tenant/user ids as LLM-controlled parameters.
+    private static IServiceCollection AddAgent(this IServiceCollection services)
+    {
+        services.AddScoped<LoopCappingFilter>(sp =>
+        {
+            var logger = sp.GetRequiredService<ILogger<LoopCappingFilter>>();
+            var maxLoops = sp.GetRequiredService<IOptions<AiOptions>>().Value.MaxAllowedToolLoops;
+            return new LoopCappingFilter(logger, maxLoops);
+        });
+        services.AddScoped<ToolInvocationAuditFilter>();
+
+        services.AddScoped<PortfolioAgentPlugin>();
+
+        services.AddScoped<IKernelFactory, KernelFactory>();
+        services.AddScoped<IAgentOrchestrator, AgentOrchestrator>();
+
+        services.AddHttpClient("InferenceClient")
+            .AddStandardResilienceHandler();
 
         return services;
     }
@@ -202,6 +232,12 @@ public static class DependencyInjection
         services
             .AddOptions<EncryptionOptions>()
             .Bind(configuration.GetRequiredSection(EncryptionOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services
+            .AddOptions<AiOptions>()
+            .Bind(configuration.GetRequiredSection(AiOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
