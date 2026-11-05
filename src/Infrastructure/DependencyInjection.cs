@@ -18,6 +18,7 @@ using Infrastructure.Reports;
 using Infrastructure.Agent;
 using Infrastructure.Agent.Filters;
 using Infrastructure.Agent.Plugins;
+using Infrastructure.Resilience;
 using Application.Reports.Interfaces;
 using Application.Common.Security;
 using Application.Agent.Interfaces;
@@ -49,7 +50,7 @@ public static class DependencyInjection
             .AddAdapters()
             .AddSecurity()
             .AddCaching()
-            .AddAgent()
+            .AddAgent(configuration)
             .AddHealthChecksForDependencies(configuration);
 
         return services;
@@ -59,8 +60,10 @@ public static class DependencyInjection
     // singleton - plugins/filters below carry the authenticated user's ambient identity),
     // guardrail filters wired into the kernel itself rather than around the HttpClient, and
     // plugins that never accept tenant/user ids as LLM-controlled parameters.
-    private static IServiceCollection AddAgent(this IServiceCollection services)
+    private static IServiceCollection AddAgent(this IServiceCollection services, IConfiguration configuration)
     {
+        var aiOptions = configuration.GetSection(AiOptions.SectionName).Get<AiOptions>() ?? new AiOptions();
+
         services.AddScoped<LoopCappingFilter>(sp =>
         {
             var logger = sp.GetRequiredService<ILogger<LoopCappingFilter>>();
@@ -75,7 +78,7 @@ public static class DependencyInjection
         services.AddScoped<IAgentOrchestrator, AgentOrchestrator>();
 
         services.AddHttpClient("InferenceClient")
-            .AddStandardResilienceHandler();
+            .AddInferenceResilience(TimeSpan.FromSeconds(aiOptions.RequestTimeoutSeconds));
 
         return services;
     }

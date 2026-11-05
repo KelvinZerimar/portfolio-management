@@ -25,5 +25,10 @@ public sealed class SendAgentMessageCommandHandler(
             logger.LogWarning(ex, "Agent chat halted: tool loop cap exceeded");
             return Error.Failure("Agent.LoopExhausted", ex.Message);
         }
+        catch (AgentTimeoutException ex)
+        {
+            logger.LogWarning(ex, "Agent chat halted: inference request timed out");
+            return Error.Failure("Agent.Timeout", ex.Message);
+        }
     }
 }
