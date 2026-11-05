@@ -3,10 +3,29 @@
 ## Contexto
 
 El agente de IA (Semantic Kernel + tool-calling) permite al usuario preguntar en lenguaje natural
-sobre sus propios portafolios. Corre contra un modelo servido por Ollama (hoy en un contenedor
-gestionado por un AppHost de Aspire, `builder.AddOllama("ollama").WithDataVolume().WithOpenWebUI()`,
-no por este repo) a través de su endpoint OpenAI-compatible. Este documento resume el recorrido
-completo endpoint → respuesta y las decisiones de diseño que no son obvias leyendo un solo archivo.
+sobre sus propios portafolios. Corre contra un modelo servido por Ollama a través de su endpoint
+OpenAI-compatible. Este documento resume el recorrido completo endpoint → respuesta y las
+decisiones de diseño que no son obvias leyendo un solo archivo.
+
+## Levantar Ollama en local
+
+El repo incluye un `docker-compose.yml` en la raíz con un servicio `ollama` (puerto fijo `11434`) y
+un servicio corto `ollama-pull` que descarga `qwen2.5:3b-instruct` automáticamente la primera vez:
+
+```bash
+docker compose up -d
+```
+
+`appsettings.Development.json` ya apunta `Ai:FastModel`/`Ai:ReasoningModel` a
+`http://localhost:11434/v1`. La primera vez, el pull tarda unos minutos (~2 GB); se puede seguir con
+`docker compose logs -f ollama-pull`. Los modelos quedan cacheados en el volumen `ollama_data`, así
+que reinicios posteriores (`docker compose up -d` o un simple reboot del contenedor) no vuelven a
+descargar nada.
+
+Si ya tienes un Ollama propio corriendo (p. ej. un AppHost de .NET Aspire con
+`builder.AddOllama("ollama")`, como se usó originalmente para este proyecto), no hace falta el
+compose: basta con ajustar el `Endpoint` en `appsettings.Development.json` al puerto que exponga esa
+otra instancia.
 
 ## Flujo paso a paso
 
