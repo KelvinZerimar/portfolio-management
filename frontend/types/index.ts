@@ -253,3 +253,13 @@ export interface RefreshPortfolioPricesResponse {
   updated: RefreshedHoldingItemResponse[];
   skipped: SkippedHoldingItemResponse[];
 }
+
+// ---------- Agent ----------
+
+export interface SendAgentMessageRequest {
+  message: string;
+}
+
+export interface SendAgentMessageResponse {
+  reply: string;
+}
