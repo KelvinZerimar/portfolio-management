@@ -22,6 +22,7 @@ import {
   type RefreshPortfolioPricesResponse,
   type RegisterUserRequest,
   type RegisterUserResponse,
+  type SendAgentMessageResponse,
   type UpdateCryptoCurrencyRequest,
   type UpdateExchangeRequest,
   type UpdateNoteRequest,
@@ -180,4 +181,13 @@ export const noteService = {
     api.put<NoteResponse>(`/Note/${id}`, data).then((r) => r.data),
 
   remove: (id: string) => api.delete<void>(`/Note/${id}`).then((r) => r.data),
+};
+
+// ---------- Agent ----------
+
+export const agentService = {
+  // The backend caps `message` at 2000 chars and carries no history between calls —
+  // the caller is responsible for trimming any prior turns into this single string.
+  chat: (message: string) =>
+    api.post<SendAgentMessageResponse>("/Agent/chat", { message }).then((r) => r.data),
 };
