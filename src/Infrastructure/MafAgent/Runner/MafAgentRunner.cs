@@ -63,7 +63,9 @@ internal sealed class MafAgentRunner(
         "confirm button of the app, never by writing in this chat. Tell the user what you proposed.\n" +
         "6. DATES: resolve relative dates (yesterday, last Monday, this month) in the Europe/Madrid time zone from the " +
         "local time given in the context. For a day without a time pass yyyy-MM-dd; for an exact time pass the UTC " +
-        "instant with a Z suffix.";
+        "instant with a Z suffix.\n" +
+        "7. CURRENCY: every value and price the tools return is in euros (EUR). Write amounts with the € symbol " +
+        "(e.g. 3.400,00 €); never call them units, dollars or a base currency.";
 
     // Marks the per-turn time message. Only the current one is kept in the history: older ones would leave the
     // model several conflicting "current" times (and grow the session on every turn).

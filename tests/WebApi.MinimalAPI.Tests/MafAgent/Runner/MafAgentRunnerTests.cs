@@ -104,6 +104,7 @@ public sealed class MafAgentRunnerTests
         instructions.Should().Contain("not supported", "rule 2: deleting or writing catalogs is explained as unsupported");
         instructions.Should().Contain("MissingOrAmbiguous", "rule 3: ask for the missing field");
         instructions.Should().Contain("Europe/Madrid", "rule 4: relative dates are resolved in Madrid");
+        instructions.Should().Contain("euros (EUR)", "amounts are euros, never 'units of the base currency'");
     }
 
     [Fact]

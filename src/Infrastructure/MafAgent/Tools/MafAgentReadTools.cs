@@ -92,7 +92,7 @@ internal sealed class MafAgentReadTools(
         return page.Data.Select(p => new MafPortfolioSummary(p.Id, p.Name, p.Description)).ToList();
     }
 
-    [Description("Gets the current total value (sum of ALL holdings combined) of one of the user's portfolios. Use ONLY when the question has no specific asset symbol and no date. For a per-asset breakdown use GetPortfolioHoldings; to compare asset values across two dates use GetPortfolioAssetValueComparison; for one asset's historical peak or trough use GetAssetPeakOrTroughDate.")]
+    [Description("Gets the current total value in euros (sum of ALL holdings combined) of one of the user's portfolios. Use ONLY when the question has no specific asset symbol and no date. For a per-asset breakdown use GetPortfolioHoldings; to compare asset values across two dates use GetPortfolioAssetValueComparison; for one asset's historical peak or trough use GetAssetPeakOrTroughDate.")]
     public async Task<object> GetPortfolioValue(
         [Description(PortfolioIdHint)] long portfolioId,
         CancellationToken cancellationToken = default)
@@ -103,8 +103,9 @@ internal sealed class MafAgentReadTools(
             return NotFound;
         }
 
+        // The same figure as the dashboard: the latest snapshot of each (asset, exchange), not every entry.
         List<PortfolioEntry> entries = await portfolioEntryRepository.GetByPortfolioIdAsync(portfolioId, cancellationToken);
-        return portfolio.GetTotalValue(entries);
+        return portfolio.GetPortfolioValueByDate(entries, timeProvider.GetUtcNow().UtcDateTime);
     }
 
     [Description("Gets the CURRENT per-asset breakdown (symbol, quantity, value) of one of the user's portfolios, ordered from highest to lowest value. Do NOT use it for historical dates.")]
