@@ -30,13 +30,9 @@ public sealed class Portfolio : Entity
             CreatedAt = DateTime.UtcNow
         };
     }
-    public decimal GetTotalValue(List<PortfolioEntry> entries)
-    {
-        return entries
-            .Where(e => e.PortfolioId == Id)
-            .Sum(e => e.Quantity * e.PricePerUnit);
-    }
 
+    // Each entry is a snapshot of one (asset, exchange), not a purchase: the value is the sum of the latest
+    // snapshots on or before the date, never of every entry.
     public decimal GetPortfolioValueByDate(List<PortfolioEntry> entries, DateTime date)
     {
         return GetHoldingsAsOf(entries, date).Sum(e => e.Quantity * e.PricePerUnit);

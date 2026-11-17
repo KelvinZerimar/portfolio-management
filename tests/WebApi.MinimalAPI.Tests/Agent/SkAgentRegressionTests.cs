@@ -110,8 +110,20 @@ public sealed class SkAgentRegressionTests
 
         decimal? value = await CreatePlugin().GetPortfolioValueAsync(PortfolioId, TestContext.Current.CancellationToken);
 
-        // BTC 2 × 100 + ETH 3 × 10 (GetTotalValue sums every entry of the portfolio).
+        // BTC 2 × 100 + ETH 3 × 10.
         value.Should().Be(230m);
+    }
+
+    [Fact]
+    public async Task GetPortfolioValue_SeveralSnapshotsOfOneAsset_CountsOnlyTheLatest()
+    {
+        SeedOwnedPortfolioWithBtcHistory();
+
+        decimal? value = await CreatePlugin().GetPortfolioValueAsync(PortfolioId, TestContext.Current.CancellationToken);
+
+        // Each entry is a snapshot, not a purchase: only the latest (1 × 50) counts, as on the dashboard.
+        // Summing every entry would give 450.
+        value.Should().Be(50m);
     }
 
     [Fact]

@@ -101,6 +101,16 @@ public sealed class MafAgentReadToolsTests
     }
 
     [Fact]
+    public async Task GetPortfolioValue_IsTheSumOfTheCurrentHoldings_NotOfEveryEntry()
+    {
+        // Each entry is a snapshot, not a purchase: only the latest per (asset, exchange) counts, as on the
+        // dashboard. BTC@1 120 + BTC@2 50 + ETH 260 + SOL 50 = 480 (summing every entry would give 880).
+        object result = await _tools.GetPortfolioValue(PortfolioId, Token);
+
+        result.Should().Be(480m);
+    }
+
+    [Fact]
     public async Task GetPortfolioHoldings_MatchesTheSkPlugin_OrderedByValueDescending()
     {
         object result = await _tools.GetPortfolioHoldings(PortfolioId, Token);

@@ -43,7 +43,7 @@ public sealed class PortfolioAgentPlugin(
             .ToList();
     }
 
-    [KernelFunction, Description("Gets the current total value (sum of ALL holdings combined) of one of the authenticated user's portfolios, by portfolio id. Use ONLY when the question has no specific asset symbol and no date. For a current per-asset breakdown use GetPortfolioHoldingsAsync; for comparing asset values across two dates use GetPortfolioAssetValueComparisonAsync; for a single asset's historical peak or trough use GetAssetPeakOrTroughDateAsync.")]
+    [KernelFunction, Description("Gets the current total value in euros (sum of ALL holdings combined) of one of the authenticated user's portfolios, by portfolio id. Use ONLY when the question has no specific asset symbol and no date. For a current per-asset breakdown use GetPortfolioHoldingsAsync; for comparing asset values across two dates use GetPortfolioAssetValueComparisonAsync; for a single asset's historical peak or trough use GetAssetPeakOrTroughDateAsync.")]
     public async Task<decimal?> GetPortfolioValueAsync(
         [Description("The portfolio id, as returned by ListMyPortfoliosAsync")] long portfolioId,
         CancellationToken cancellationToken = default)
@@ -54,8 +54,9 @@ public sealed class PortfolioAgentPlugin(
             return null;
         }
 
+        // The same figure as the dashboard: the latest snapshot of each (asset, exchange), not every entry.
         var entries = await portfolioEntryRepository.GetByPortfolioIdAsync(portfolioId, cancellationToken);
-        return portfolio.GetTotalValue(entries);
+        return portfolio.GetPortfolioValueByDate(entries, DateTime.UtcNow);
     }
 
     [KernelFunction, Description("Gets the CURRENT (right now, today) per-asset breakdown (symbol, quantity, value) of one of the authenticated user's portfolios, ordered from highest to lowest value. Use this to compare assets against each other as of today (e.g. 'which asset is worth the most right now'). Do NOT use this for historical dates; use GetPortfolioAssetValueComparisonAsync to compare two dates or GetAssetPeakOrTroughDateAsync for a single asset's historical peak or trough.")]

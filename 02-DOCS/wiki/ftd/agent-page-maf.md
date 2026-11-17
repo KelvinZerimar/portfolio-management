@@ -46,6 +46,15 @@ panel; no se tira.
 - [x] Panel lateral en el dashboard (`components/agent/MafAgentPanel.tsx`, `<dialog>` nativo modal) —
       prueba: `npm run lint` y `npm run build`
 - [x] `dotnet test` completo en verde — 493/493 correctos, 0 errores (2026-11-12)
+- [x] Fix (2026-11-12, rama `fix/agent-portfolio-value`): el valor del portafolio que da el agente coincide
+      con el dashboard y va en euros (MAF y SK) — prueba: tests nuevos en rojo antes (880 en vez de 480; 450 en
+      vez de 50) y en verde después; `dotnet test` completo 495/495, `dotnet format --verify-no-changes` limpio
+  - Causa: `GetPortfolioValue` usaba `Portfolio.GetTotalValue`, que suma TODAS las entradas. Cada entrada
+    es una foto de un (activo, exchange), no una compra: solo cuenta la última. El usuario vio 40.754,17
+    con un dashboard de ~3.400 €. Ahora usa `GetPortfolioValueByDate(ahora)`, igual que el dashboard, y
+    `GetTotalValue` se elimina para que nadie lo vuelva a usar.
+  - Moneda: las instrucciones de MAF (regla 7) y SK dicen que todo está en euros (€). SK decía antes
+    "never add a currency symbol".
 - [ ] Revisión visual en navegador — pendiente del usuario (esta sesión no tiene navegador)
 
 ## Evidence
