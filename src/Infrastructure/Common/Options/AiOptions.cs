@@ -15,6 +15,13 @@ public sealed class ModelOptions
     public string? ApiKey { get; set; }
 }
 
+public sealed class MafAgentOptions
+{
+    // false: the MAF agent is read-only. No Propose* tool or write rule reaches the model, which also keeps
+    // the prompt small for local models. Config key: Ai:MafAgent:EnableWriteProposals.
+    public bool EnableWriteProposals { get; set; } = true;
+}
+
 public sealed class AiOptions
 {
     public const string SectionName = "Ai";
@@ -24,4 +31,5 @@ public sealed class AiOptions
     public ModelOptions ReasoningModel { get; set; } = new();
     public int MaxAllowedToolLoops { get; set; } = 5;
     public int RequestTimeoutSeconds { get; set; } = 100;
+    public MafAgentOptions MafAgent { get; set; } = new();
 }
