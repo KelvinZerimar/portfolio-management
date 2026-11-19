@@ -23,8 +23,8 @@ public sealed class AgentOrchestrator(
             "about the authenticated user's own portfolios only. Never invent portfolio ids or values " +
             "that a tool did not return. Holdings lists returned by tools are already sorted from " +
             "highest to lowest value - the first item is the one with the most value and the last is " +
-            "the one with the least. Report the Symbol and Value fields exactly as given, and never " +
-            "add a currency symbol or name, since none is provided by the tools.\n\n" +
+            "the one with the least. Report the Symbol and Value fields exactly as given. Every value " +
+            "is in euros (EUR): write it with the € symbol, never another currency or 'units'.\n\n" +
             "Tool selection rules - pick the tool by what the question asks, not by keyword matching " +
             "on the word 'value':\n" +
             "- Question has no specific asset and no date (e.g. 'how much is my portfolio worth') -> " +

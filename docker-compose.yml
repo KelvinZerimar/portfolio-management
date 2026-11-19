@@ -3,6 +3,10 @@ services:
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
+    environment:
+      # The default 4096 leaves ~2050 tokens of input: the MAF agent's prompt (instructions + 21 tool schemas +
+      # tool results) reaches ~6000 and Ollama silently truncates it ("truncating input prompt").
+      OLLAMA_CONTEXT_LENGTH: "16384"
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
@@ -21,6 +25,18 @@ services:
       OLLAMA_HOST: ollama:11434
     entrypoint: ["ollama", "pull", "qwen2.5:3b-instruct"]
     restart: "no"
+  
+  seq:
+    image: datalust/seq:latest
+    ports:
+      - "5341:5341"   # ingesta: aquí envía los logs la API
+      - "8081:80"     # interfaz web de Seq
+    environment:
+      ACCEPT_EULA: "Y"
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"   # sin login, solo para local
+    volumes:
+      - seq_data:/data
 
 volumes:
   ollama_data:
+  seq_data:

@@ -39,22 +39,23 @@ public class PortfolioTests
     }
 
     [Fact]
-    public void GetTotalValue_WithEntriesBelongingToPortfolio_ReturnsSumOfQuantityTimesPrice()
+    public void GetPortfolioValueByDate_SeveralSnapshotsOfOneAsset_CountsOnlyTheLatest()
     {
         var portfolio = new Portfolio();
         var entries = new List<PortfolioEntry>
         {
-            CreateEntry(portfolio.Id, 1, 1, quantity: 2m, pricePerUnit: 100m, recordedAt: DateTime.UtcNow),
-            CreateEntry(portfolio.Id, 2, 1, quantity: 3m, pricePerUnit: 50m, recordedAt: DateTime.UtcNow),
+            CreateEntry(portfolio.Id, 1, 1, quantity: 2m, pricePerUnit: 100m, recordedAt: new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)),
+            CreateEntry(portfolio.Id, 1, 1, quantity: 3m, pricePerUnit: 50m, recordedAt: new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc)),
         };
 
-        var total = portfolio.GetTotalValue(entries);
+        var value = portfolio.GetPortfolioValueByDate(entries, new DateTime(2026, 3, 1, 0, 0, 0, DateTimeKind.Utc));
 
-        total.Should().Be(2m * 100m + 3m * 50m);
+        // Not 2 × 100 + 3 × 50: an entry is a snapshot, not a purchase.
+        value.Should().Be(3m * 50m);
     }
 
     [Fact]
-    public void GetTotalValue_WithEntriesFromOtherPortfolios_ExcludesThem()
+    public void GetPortfolioValueByDate_WithEntriesFromOtherPortfolios_ExcludesThem()
     {
         var portfolio = new Portfolio();
         var entries = new List<PortfolioEntry>
@@ -63,19 +64,19 @@ public class PortfolioTests
             CreateEntry(999, 2, 1, 3m, 50m, DateTime.UtcNow),
         };
 
-        var total = portfolio.GetTotalValue(entries);
+        var value = portfolio.GetPortfolioValueByDate(entries, DateTime.UtcNow);
 
-        total.Should().Be(200m);
+        value.Should().Be(200m);
     }
 
     [Fact]
-    public void GetTotalValue_WithNoEntries_ReturnsZero()
+    public void GetPortfolioValueByDate_WithNoEntries_ReturnsZero()
     {
         var portfolio = new Portfolio();
 
-        var total = portfolio.GetTotalValue(new List<PortfolioEntry>());
+        var value = portfolio.GetPortfolioValueByDate(new List<PortfolioEntry>(), DateTime.UtcNow);
 
-        total.Should().Be(0m);
+        value.Should().Be(0m);
     }
 
     [Fact]
