@@ -16,6 +16,7 @@ timestamp: 2026-11-11T12:00:00Z
 ## ftd
 - [Agent chat page](ftd/agent-chat-page.md)
 - [MAF: valores por activo en fechas](ftd/maf-asset-values-at-dates.md)
+- [MAF: modo solo lectura](ftd/maf-read-only-tools.md)
 
 ## sdd
 - [Constitution (draft)](sdd/constitution.md)

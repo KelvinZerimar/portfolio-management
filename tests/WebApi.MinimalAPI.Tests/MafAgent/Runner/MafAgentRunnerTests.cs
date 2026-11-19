@@ -93,6 +93,45 @@ public sealed class MafAgentRunnerTests
     }
 
     [Fact]
+    public async Task WithWriteProposalsDisabled_TheModelGetsOnlyTheReadTools()
+    {
+        _options.MafAgent.EnableWriteProposals = false;
+        ScriptedChatClient model = AnswersWith("hola");
+
+        await Runner(model).RunTurnAsync(_conversation, "", "hola", null, Token);
+
+        List<string> tools = model.Calls[0].Options!.Tools!.Select(t => t.Name).ToList();
+        IEnumerable<string> readTools = new MafAgentReadTools(_portfolios, Substitute.For<IPortfolioEntryRepository>(), _sender, _currentUser, _time)
+            .GetTools().Select(t => t.Name);
+        tools.Should().BeEquivalentTo(readTools, "exactly the read tools reach the model, whichever are enabled");
+        tools.Should().Contain(["ListMyPortfolios", "GetPortfolioAssetValuesAt"]);
+        tools.Should().NotContain(name => name.StartsWith("Propose", StringComparison.Ordinal), "the agent is read-only");
+    }
+
+    [Fact]
+    public async Task WithWriteProposalsDisabled_TheInstructionsSayReadOnly_AndDropTheProposeRules()
+    {
+        _options.MafAgent.EnableWriteProposals = false;
+        ScriptedChatClient model = AnswersWith("hola");
+
+        await Runner(model).RunTurnAsync(_conversation, "", "hola", null, Token);
+
+        string instructions = model.Calls[0].Options!.Instructions!;
+        instructions.Should().Contain("READ-ONLY");
+        instructions.Should().NotContain("Propose", "no Propose* tool is offered, so no rule may point the model at one");
+        instructions.Should().NotContain("MissingOrAmbiguous");
+        instructions.Should().Contain("language of the user's LAST message");
+        instructions.Should().Contain("Europe/Madrid");
+        instructions.Should().Contain("euros (EUR)");
+    }
+
+    [Fact]
+    public void WriteProposals_AreEnabledByDefault()
+    {
+        new AiOptions().MafAgent.EnableWriteProposals.Should().BeTrue("existing deployments keep their behaviour unless configured");
+    }
+
+    [Fact]
     public async Task TheInstructions_CarryTheFourRulesOfThePlan()
     {
         ScriptedChatClient model = AnswersWith("hola");

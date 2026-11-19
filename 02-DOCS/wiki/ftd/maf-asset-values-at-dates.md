@@ -1,7 +1,7 @@
 ---
 author: kramirez
 branch: development
-status: in-progress
+status: done
 ---
 # Herramienta MAF `GetPortfolioAssetValuesAt`: valor de cada activo en fechas concretas
 
@@ -40,9 +40,12 @@ Causa: ninguna herramienta devolvía el valor por activo en una fecha pasada. La
 - [x] Causa de que siga fallando tras la herramienta (2026-11-19) — prueba: log de Ollama
       `truncating input prompt limit=2050 prompt=6102`, `n_ctx = 4096`, y un `500` a los `10m0s`
 - [x] `docker-compose.yml`: `OLLAMA_CONTEXT_LENGTH: "16384"` en el servicio `ollama` — prueba: `docker compose config`
-- [ ] Recrear el contenedor de Ollama desde este compose y comprobar `context_length: 16384` en `/api/ps` y que
-      desaparece `truncating input prompt` — pendiente del usuario
-- [ ] Prueba manual con el agente: la pregunta original devuelve la lista por fecha — pendiente del usuario
+- [x] Contenedor de Ollama recreado desde este compose — prueba: `/api/ps` con `context_length: 16384` y log con
+      `truncated = 0` (prompts de 3056 y 6204 tokens)
+- [x] Prueba manual con el agente: la pregunta original devuelve la lista por fecha — prueba: comprobación del
+      usuario con `gpt-4.1-nano` en Azure AI Foundry, 2026-11-19 (ver [maf-read-only-tools](maf-read-only-tools.md))
+- [ ] Ollama local en CPU: el prompt ya no se recorta (`truncated = 0`), pero cada respuesta tarda ~9 min. No se
+      persigue: el agente usa Azure.
 
 ## Evidence
 

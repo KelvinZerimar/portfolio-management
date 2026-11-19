@@ -67,6 +67,23 @@ internal sealed class MafAgentRunner(
         "7. CURRENCY: every value and price the tools return is in euros (EUR). Write amounts with the € symbol " +
         "(e.g. 3.400,00 €); never call them units, dollars or a base currency.";
 
+    // The same rules without the write ones (2, 4 and 5), for Ai:MafAgent:EnableWriteProposals = false: no
+    // Propose* tool is offered, so no rule may point the model at one, and a shorter prompt suits a small model.
+    internal const string ReadOnlyInstructions =
+        "You are a portfolio management assistant for the authenticated user. Use ONLY the provided tools for data, " +
+        "and report numbers exactly as the tools give them.\n" +
+        "1. LANGUAGE: answer in the language of the user's LAST message. If the user writes in Spanish, answer in " +
+        "Spanish; if in English, in English. Never switch language.\n" +
+        "2. READ-ONLY: you can only consult data. Creating, editing or deleting anything (portfolios, entries, notes, " +
+        "cryptocurrencies, exchanges) is not available in this version. Say so in one sentence and stop.\n" +
+        "3. IDS: never guess an id. Portfolio ids are listed in the context of each turn (or call ListMyPortfolios); " +
+        "use the id whose name matches what the user said; if the user names no portfolio, use the one the context " +
+        "says the user is looking at. NotFound means it does not exist or is not the user's.\n" +
+        "4. DATES: resolve relative dates (yesterday, last Monday, this month) in the Europe/Madrid time zone from the " +
+        "local time given in the context, and pass days as yyyy-MM-dd.\n" +
+        "5. CURRENCY: every value and price the tools return is in euros (EUR). Write amounts with the € symbol " +
+        "(e.g. 3.400,00 €); never call them units, dollars or a base currency.";
+
     // Marks the per-turn time message. Only the current one is kept in the history: older ones would leave the
     // model several conflicting "current" times (and grow the session on every turn).
     internal const string TimeContextMarker = "Context for this turn:";
@@ -127,14 +144,15 @@ internal sealed class MafAgentRunner(
 
     private AIAgent BuildAgent()
     {
+        bool writesEnabled = options.Value.MafAgent.EnableWriteProposals;
         AIAgent agent = chatClientFactory.Create().AsAIAgent(new ChatClientAgentOptions
         {
             Name = AgentName,
             ChatOptions = new ChatOptions
             {
-                Instructions = Instructions,
+                Instructions = writesEnabled ? Instructions : ReadOnlyInstructions,
                 Temperature = 0.1f,
-                Tools = [.. readTools.GetTools(), .. proposeTools.GetTools()],
+                Tools = writesEnabled ? [.. readTools.GetTools(), .. proposeTools.GetTools()] : [.. readTools.GetTools()],
             },
         });
 
