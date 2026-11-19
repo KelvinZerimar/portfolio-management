@@ -86,8 +86,8 @@ public sealed class MafAgentRunnerTests
         await Runner(model).RunTurnAsync(_conversation, "", "hola", null, Token);
 
         List<string> tools = model.Calls[0].Options!.Tools!.Select(t => t.Name).ToList();
-        tools.Should().HaveCount(20);
-        tools.Should().Contain(["ListMyPortfolios", "GetNote", "ProposeCreateEntry", "ProposeSendStatusReport"]);
+        tools.Should().HaveCount(21);
+        tools.Should().Contain(["ListMyPortfolios", "GetPortfolioAssetValuesAt", "GetNote", "ProposeCreateEntry", "ProposeSendStatusReport"]);
         tools.Should().NotContain(name => Regex.IsMatch(name, "Delete|Remove|Purge", RegexOptions.IgnoreCase), "nothing can be deleted (AC8)");
         tools.Should().NotContain(name => Regex.IsMatch(name, @"^Propose\w*(CryptoCurrenc|Exchange)", RegexOptions.IgnoreCase), "the catalogs are read-only (AC8)");
     }

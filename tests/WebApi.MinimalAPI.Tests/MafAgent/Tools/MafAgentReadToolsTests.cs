@@ -173,10 +173,63 @@ public sealed class MafAgentReadToolsTests
         result.Should().Be("InvalidDates");
     }
 
+    // ---- GetPortfolioAssetValuesAt: the value of each asset ON given dates (not a comparison) ----
+
+    [Fact]
+    public async Task GetPortfolioAssetValuesAt_ListsEachAssetPerDate_SummingExchanges_InDateOrder()
+    {
+        // Dates given out of order: the result is by date, then by value descending.
+        object result = await _tools.GetPortfolioAssetValuesAt(PortfolioId, ["2026-11-05", "2026-10-06"], Token);
+
+        // 2026-10-06: BTC 2x100 + 1x50 = 250 (qty 3), ETH 200; SOL not held yet, so not listed.
+        // 2026-11-05: BTC 1x120 + 1x50 = 170 (qty 2), ETH 260, SOL 50.
+        result.Should().BeEquivalentTo(new[]
+        {
+            new MafAssetValueAtDate("2026-10-06", "BTC", 3m, 250m),
+            new MafAssetValueAtDate("2026-10-06", "ETH", 1m, 200m),
+            new MafAssetValueAtDate("2026-11-05", "ETH", 1m, 260m),
+            new MafAssetValueAtDate("2026-11-05", "BTC", 2m, 170m),
+            new MafAssetValueAtDate("2026-11-05", "SOL", 5m, 50m),
+        }, o => o.WithStrictOrdering());
+    }
+
+    [Fact]
+    public async Task GetPortfolioAssetValuesAt_RepeatedDate_IsListedOnce()
+    {
+        object result = await _tools.GetPortfolioAssetValuesAt(PortfolioId, ["2026-10-06", "2026-10-06"], Token);
+
+        ((IEnumerable<MafAssetValueAtDate>)result).Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task GetPortfolioAssetValuesAt_DateBeforeAnyEntry_ListsNothingForIt()
+    {
+        object result = await _tools.GetPortfolioAssetValuesAt(PortfolioId, ["2026-01-01"], Token);
+
+        ((IEnumerable<MafAssetValueAtDate>)result).Should().BeEmpty();
+    }
+
+    public static TheoryData<string[]> InvalidDateLists => new(
+        Array.Empty<string>(),
+        new[] { "06/10/2026" },
+        new[] { "2026-10-06", "2026-13-05" },
+        // 11 dates: one more than the limit.
+        Enumerable.Range(1, 11).Select(day => $"2026-01-{day:00}").ToArray());
+
+    [Theory]
+    [MemberData(nameof(InvalidDateLists))]
+    public async Task GetPortfolioAssetValuesAt_NoDates_BadFormat_OrTooManyDates_IsInvalidDates(string[] dates)
+    {
+        object result = await _tools.GetPortfolioAssetValuesAt(PortfolioId, dates, Token);
+
+        result.Should().Be("InvalidDates");
+        await _entries.DidNotReceiveWithAnyArgs().GetByPortfolioIdAsync(default, Token);
+    }
+
     // ---- ownership (AC1b): another user's portfolio is NotFound and its entries are never read ----
 
     public static TheoryData<string> PortfolioTools =>
-        ["value", "holdings", "peak", "comparison"];
+        ["value", "holdings", "peak", "comparison", "valuesAt"];
 
     [Theory]
     [MemberData(nameof(PortfolioTools))]
@@ -187,7 +240,8 @@ public sealed class MafAgentReadToolsTests
             "value" => await _tools.GetPortfolioValue(ForeignPortfolioId, Token),
             "holdings" => await _tools.GetPortfolioHoldings(ForeignPortfolioId, Token),
             "peak" => await _tools.GetAssetPeakOrTroughDate(ForeignPortfolioId, "BTC", "max", null, null, Token),
-            _ => await _tools.GetPortfolioAssetValueComparison(ForeignPortfolioId, "2026-10-06", "2026-11-05", Token),
+            "comparison" => await _tools.GetPortfolioAssetValueComparison(ForeignPortfolioId, "2026-10-06", "2026-11-05", Token),
+            _ => await _tools.GetPortfolioAssetValuesAt(ForeignPortfolioId, ["2026-10-06"], Token),
         };
 
         result.Should().Be("NotFound");
@@ -390,7 +444,7 @@ public sealed class MafAgentReadToolsTests
         functions.Select(f => f.Name).Should().BeEquivalentTo(
         [
             "ListMyPortfolios", "GetPortfolioValue", "GetPortfolioHoldings", "GetAssetPeakOrTroughDate",
-            "GetPortfolioAssetValueComparison", "GetPortfolioEntries", "GetPortfolioHistory", "GetPortfolioAllocation",
+            "GetPortfolioAssetValueComparison", "GetPortfolioAssetValuesAt", "GetPortfolioEntries", "GetPortfolioHistory", "GetPortfolioAllocation",
             "ListCryptoCurrencies", "ListExchanges", "ListNotes", "GetNote",
         ]);
         functions.Should().OnlyContain(f => !string.IsNullOrWhiteSpace(f.Description));

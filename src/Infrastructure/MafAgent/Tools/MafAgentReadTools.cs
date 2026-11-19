@@ -23,6 +23,9 @@ internal sealed record MafHolding(string Symbol, decimal Quantity, decimal Value
 
 internal sealed record MafAssetValuePoint(string Symbol, DateTime Date, decimal Value);
 
+// Date as yyyy-MM-dd text: the model reads it as given, without a time or a time zone to misread.
+internal sealed record MafAssetValueAtDate(string Date, string Symbol, decimal Quantity, decimal Value);
+
 internal sealed record MafAssetValueComparison(string Symbol, decimal StartValue, decimal EndValue, decimal Difference);
 
 internal sealed record MafEntry(long Id, long CryptoCurrencyId, long ExchangeId, decimal Quantity, decimal PricePerUnit, DateTime RecordedAt);
@@ -62,6 +65,7 @@ internal sealed class MafAgentReadTools(
     public const string InvalidDates = "InvalidDates";
 
     private const string DateFormat = "yyyy-MM-dd";
+    private const int MaxDatesPerCall = 10;
     private const string PortfolioIdHint = "The portfolio id, as returned by ListMyPortfolios";
 
     public IReadOnlyList<AIFunction> GetTools() =>
@@ -71,13 +75,14 @@ internal sealed class MafAgentReadTools(
         Tool(GetPortfolioHoldings),
         Tool(GetAssetPeakOrTroughDate),
         Tool(GetPortfolioAssetValueComparison),
+        Tool(GetPortfolioAssetValuesAt),
         Tool(GetPortfolioEntries),
         Tool(GetPortfolioHistory),
         Tool(GetPortfolioAllocation),
         Tool(ListCryptoCurrencies),
-        Tool(ListExchanges),
-        Tool(ListNotes),
-        Tool(GetNote),
+        //Tool(ListExchanges),
+        //Tool(ListNotes),
+        //Tool(GetNote),
     ];
 
     // ---- inherited from the SK agent (parity) ----
@@ -108,7 +113,7 @@ internal sealed class MafAgentReadTools(
         return portfolio.GetPortfolioValueByDate(entries, timeProvider.GetUtcNow().UtcDateTime);
     }
 
-    [Description("Gets the CURRENT per-asset breakdown (symbol, quantity, value) of one of the user's portfolios, ordered from highest to lowest value. Do NOT use it for historical dates.")]
+    [Description("Gets the CURRENT per-asset breakdown (symbol, quantity, value) of one of the user's portfolios, ordered from highest to lowest value. Do NOT use it for historical dates: for the per-asset values on past dates use GetPortfolioAssetValuesAt.")]
     public async Task<object> GetPortfolioHoldings(
         [Description(PortfolioIdHint)] long portfolioId,
         CancellationToken cancellationToken = default)
@@ -169,7 +174,7 @@ internal sealed class MafAgentReadTools(
         return new MafAssetValuePoint(series!.Symbol, extremePoint.Date, extremePoint.Value);
     }
 
-    [Description("Compares the value of every asset in one of the user's portfolios between two dates (yyyy-MM-dd). Returns each asset's value on or before each date and the signed difference (end minus start), including assets present on only one date. Returns InvalidDates for a bad format or a start after the end.")]
+    [Description("Compares the value of every asset in one of the user's portfolios between two dates (yyyy-MM-dd). Use ONLY when the user asks how values CHANGED (difference, rise, drop) between two dates; to just list the values on given dates use GetPortfolioAssetValuesAt. Returns each asset's value on or before each date and the signed difference (end minus start), including assets present on only one date. Returns InvalidDates for a bad format or a start after the end.")]
     public async Task<object> GetPortfolioAssetValueComparison(
         [Description(PortfolioIdHint)] long portfolioId,
         [Description("The inclusive start date, yyyy-MM-dd")] string from,
@@ -200,6 +205,48 @@ internal sealed class MafAgentReadTools(
                 decimal endValue = endValues.GetValueOrDefault(symbol);
                 return new MafAssetValueComparison(symbol, startValue, endValue, endValue - startValue);
             })
+            .ToList();
+    }
+
+    [Description("Lists the value in euros of each asset (date, symbol, quantity, value) of one of the user's portfolios ON each of the given dates (yyyy-MM-dd, 1 to 10 dates). Use it when the user asks for the historical values, the holdings or the data of each asset on specific dates. Each value is the latest recorded on or before that date, summed across exchanges; an asset not held on a date is not listed for it. Ordered by date, then by value from highest to lowest. Returns InvalidDates for no dates, more than 10, or a bad format.")]
+    public async Task<object> GetPortfolioAssetValuesAt(
+        [Description(PortfolioIdHint)] long portfolioId,
+        [Description("The dates to value, each yyyy-MM-dd, e.g. [\"2026-10-02\", \"2026-11-17\"]")] string[] dates,
+        CancellationToken cancellationToken = default)
+    {
+        List<DateTime> parsedDates = [];
+        foreach (string date in dates)
+        {
+            if (!TryParseDate(date, out DateTime parsed))
+            {
+                return InvalidDates;
+            }
+
+            parsedDates.Add(parsed);
+        }
+
+        parsedDates = parsedDates.Distinct().Order().ToList();
+        if (parsedDates.Count is 0 or > MaxDatesPerCall)
+        {
+            return InvalidDates;
+        }
+
+        Portfolio? portfolio = await GetOwnedPortfolioOrNullAsync(portfolioId, cancellationToken);
+        if (portfolio is null)
+        {
+            return NotFound;
+        }
+
+        List<PortfolioEntry> entries = await portfolioEntryRepository.GetByPortfolioIdAsync(portfolioId, cancellationToken);
+        return parsedDates
+            .SelectMany(date => portfolio.GetHoldingsAsOf(entries, date)
+                .GroupBy(entry => entry.CryptoCurrency.Symbol, StringComparer.OrdinalIgnoreCase)
+                .Select(group => new MafAssetValueAtDate(
+                    date.ToString(DateFormat, CultureInfo.InvariantCulture),
+                    group.Key,
+                    group.Sum(entry => entry.Quantity),
+                    group.Sum(entry => entry.Quantity * entry.PricePerUnit)))
+                .OrderByDescending(value => value.Value))
             .ToList();
     }
 
