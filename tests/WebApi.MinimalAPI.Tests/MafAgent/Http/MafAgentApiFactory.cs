@@ -106,17 +106,6 @@ public sealed class MafAgentApiFactory : WebApplicationFactory<Program>
             services.RemoveAll<ICoinGeckoClient>();
             services.AddSingleton(CoinGecko);
 
-            // HealthChecks UI polls /health in the background; tests don't need it (and in the test output
-            // folder it fails to load IdentityModel). Only its hosted services are removed: the web server
-            // itself is also an IHostedService and must stay.
-            foreach (ServiceDescriptor collector in services
-                .Where(d => d.ServiceType == typeof(IHostedService) &&
-                            d.ImplementationType?.Namespace?.StartsWith("HealthChecks.UI", StringComparison.Ordinal) == true)
-                .ToList())
-            {
-                services.Remove(collector);
-            }
-
             // Clock.
             services.RemoveAll<TimeProvider>();
             services.AddSingleton<TimeProvider>(Time);
