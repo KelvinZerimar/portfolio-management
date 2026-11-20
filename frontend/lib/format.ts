@@ -28,6 +28,31 @@ const percentageFormatter = new Intl.NumberFormat("es-ES", {
   maximumFractionDigits: 2,
 });
 
+// Changes (deltas) always carry an explicit sign: "+12,30 €" / "-418,98 €".
+const signedCurrencyFormatter = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  useGrouping: "always",
+  signDisplay: "exceptZero",
+});
+
+const signedPercentageFormatter = new Intl.NumberFormat("es-ES", {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
+
+// Axis ticks only: short enough to fit a narrow axis ("2,6 mil €").
+const compactCurrencyFormatter = new Intl.NumberFormat("es-ES", {
+  style: "currency",
+  currency: "EUR",
+  notation: "compact",
+  maximumFractionDigits: 1,
+});
+
 // Timestamps are stored and transmitted in UTC (e.g. price-refresh snapshots use
 // DateTime.UtcNow). Pinning the display timezone to Europe/Madrid — instead of
 // relying on the ambient runtime timezone, which differs between server-side
@@ -57,6 +82,19 @@ export function formatQuantity(value: number): string {
 // `value` is on a 0–100 scale (what the API and callers use), not 0–1.
 export function formatPercentage(value: number): string {
   return percentageFormatter.format(value / 100);
+}
+
+export function formatSignedCurrency(value: number): string {
+  return signedCurrencyFormatter.format(value);
+}
+
+// `value` is on a 0–100 scale, like formatPercentage.
+export function formatSignedPercentage(value: number): string {
+  return signedPercentageFormatter.format(value / 100);
+}
+
+export function formatCompactCurrency(value: number): string {
+  return compactCurrencyFormatter.format(value);
 }
 
 export function formatDate(value: string | Date): string {

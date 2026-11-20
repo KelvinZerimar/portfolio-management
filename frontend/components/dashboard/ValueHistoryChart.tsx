@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
-  Area,
   CartesianGrid,
   ComposedChart,
   Line,
@@ -12,21 +11,11 @@ import {
   YAxis,
 } from "recharts";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
-import { formatCurrency, formatDate, formatShortDate } from "@/lib/format";
+import { formatCompactCurrency, formatCurrency, formatDate, formatShortDate } from "@/lib/format";
 import { colorForKey } from "@/lib/chartColors";
 import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
+import { HISTORY_RANGE_OPTIONS, valueAsOf, type HistoryRange } from "@/lib/historyRange";
 import type { PortfolioAssetHistorySeriesResponse, PortfolioHistoryPointResponse } from "@/types";
-
-type Range = "30d" | "90d" | "1y" | "all";
-
-const RANGE_OPTIONS: { value: Range; label: string }[] = [
-  { value: "30d", label: "30d" },
-  { value: "90d", label: "90d" },
-  { value: "1y", label: "1a" },
-  { value: "all", label: "Todo" },
-];
-
-const RANGE_DAYS: Record<Range, number | null> = { "30d": 30, "90d": 90, "1y": 365, all: null };
 
 interface MergedPoint {
   date: string;
@@ -35,29 +24,19 @@ interface MergedPoint {
 }
 
 interface ValueHistoryChartProps {
+  // Already filtered to `range` by the page, which shares the same points with
+  // the headline figure's change so both always describe the same period.
   points: PortfolioHistoryPointResponse[];
   byAsset: PortfolioAssetHistorySeriesResponse[];
-  // undefined means "still loading" — must render as "—", never fall back to 0 and
-  // read as a real (and wrong) answer.
-  currentValue: number | undefined;
+  range: HistoryRange;
+  onRangeChange: (range: HistoryRange) => void;
 }
 
-export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistoryChartProps) {
-  const [range, setRange] = useState<Range>("90d");
-  const [hovered, setHovered] = useState<MergedPoint | null>(null);
-
-  // Date.now() is impure and must not run directly during render (it would also bake
-  // a build-time value into the prerendered HTML and mismatch on hydration); a lazy
-  // useState initializer is the sanctioned one-time-impure-read pattern instead.
-  const [now] = useState(() => Date.now());
-
-  const filtered = useMemo(() => {
-    const days = RANGE_DAYS[range];
-    if (days === null) return points;
-    const cutoff = now - days * 24 * 60 * 60 * 1000;
-    return points.filter((p) => new Date(p.date).getTime() >= cutoff);
-  }, [points, range, now]);
-
+// The headline figure above owns "how much and how it changed"; this panel owns
+// "how it got here". So no big duplicated value here — the tooltip gives each
+// day's reading — and the Y axis is visible with no gradient fill, because an
+// unlabeled auto-domain area made small moves look like crashes.
+export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: ValueHistoryChartProps) {
   // Same ranking as the summary cards: top assets by latest value, Euro cash
   // excluded, capped at MAX_RANKED_ASSETS so the chart doesn't get overcrowded.
   const rankedAssets = useMemo(
@@ -79,20 +58,18 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
   const showAssetLines = rankedAssets.length > 1;
 
   const merged = useMemo<MergedPoint[]>(() => {
-    if (!showAssetLines) return filtered.map((p) => ({ date: p.date, value: p.value, byAsset: {} }));
-    const byDate = rankedAssets.map((series) => ({
-      symbol: series.symbol,
-      values: new Map(series.points.map((p) => [p.date, p.value])),
-    }));
-    return filtered.map((p) => ({
+    if (!showAssetLines) return points.map((p) => ({ date: p.date, value: p.value, byAsset: {} }));
+    // valueAsOf, not an exact-date lookup: the range's anchor point sits at the
+    // cutoff, a date no series has a point on, and must still show each asset's
+    // last known value there (not 0).
+    return points.map((p) => ({
       date: p.date,
       value: p.value,
-      byAsset: Object.fromEntries(byDate.map((s) => [s.symbol, s.values.get(p.date) ?? 0])),
+      byAsset: Object.fromEntries(
+        rankedAssets.map((series) => [series.symbol, valueAsOf(series.points, p.date)])
+      ),
     }));
-  }, [filtered, rankedAssets, showAssetLines]);
-
-  const reading = hovered ?? merged[merged.length - 1] ?? null;
-  const delta = merged.length >= 2 ? merged[merged.length - 1].value - merged[0].value : null;
+  }, [points, rankedAssets, showAssetLines]);
 
   const legend = useMemo(
     () =>
@@ -104,55 +81,32 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
     [rankedAssets, showAssetLines]
   );
 
+  const first = merged[0];
+  const last = merged[merged.length - 1];
+
   return (
     <section className="panel p-6" aria-label="Histórico de valor">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold">Histórico</h2>
-          <p className="tabular text-2xl font-extrabold">
-            {reading
-              ? formatCurrency(reading.value)
-              : currentValue !== undefined
-                ? formatCurrency(currentValue)
-                : "—"}
+          <p className="mt-0.5 text-xs text-ink-muted">
+            {first && last && first !== last
+              ? `${formatDate(first.date)} – ${formatDate(last.date)}`
+              : "Sin datos suficientes en este rango"}
           </p>
-          <div className="flex items-center gap-2 text-xs text-ink-muted">
-            <span>{reading ? formatDate(reading.date) : "Sin historial todavía"}</span>
-            {delta !== null && !hovered && (
-              <span className={`tabular ${delta < 0 ? "text-accent" : "text-ink"}`}>
-                {delta >= 0 ? "+" : ""}
-                {formatCurrency(delta)}
-              </span>
-            )}
-          </div>
         </div>
         <SegmentedControl
           aria-label="Rango del histórico"
-          options={RANGE_OPTIONS}
+          options={HISTORY_RANGE_OPTIONS}
           value={range}
-          onChange={setRange}
+          onChange={onRangeChange}
         />
       </div>
 
-      <div className="mt-4 h-48">
+      <div className="mt-4 h-52">
         {merged.length > 1 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart
-              data={merged}
-              onMouseMove={(state: unknown) => {
-                const activePayload = (state as { activePayload?: { payload: MergedPoint }[] })
-                  ?.activePayload;
-                setHovered(activePayload?.[0]?.payload ?? null);
-              }}
-              onMouseLeave={() => setHovered(null)}
-              margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="valueHistoryArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.18} />
-                  <stop offset="100%" stopColor="var(--brand)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
+            <ComposedChart data={merged} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="var(--rule)" vertical={false} />
               <XAxis
                 dataKey="date"
@@ -162,14 +116,17 @@ export function ValueHistoryChart({ points, byAsset, currentValue }: ValueHistor
                 tickLine={false}
                 axisLine={{ stroke: "var(--rule)" }}
                 minTickGap={24}
+                interval="preserveStartEnd"
               />
-              <YAxis hide domain={["auto", "auto"]} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="none"
-                fill="url(#valueHistoryArea)"
-                isAnimationActive={false}
+              <YAxis
+                domain={["auto", "auto"]}
+                tickFormatter={(value: number) => formatCompactCurrency(value)}
+                tickCount={4}
+                width={64}
+                stroke="var(--ink-muted)"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
               />
               <Tooltip
                 cursor={{ stroke: "var(--ink-muted)", strokeWidth: 1 }}
