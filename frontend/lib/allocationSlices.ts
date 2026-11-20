@@ -1,5 +1,5 @@
 import { isEuroAsset } from "@/lib/assetFilters";
-import { colorForKey } from "@/lib/chartColors";
+import { assignSeriesColors } from "@/lib/chartColors";
 import type { PortfolioAllocationItemResponse } from "@/types";
 
 export type AllocationSliceKind = "item" | "other" | "cash";
@@ -42,13 +42,15 @@ export function buildAllocationSlices(
     .filter((item) => !cash.includes(item))
     .sort((a, b) => b.value - a.value);
 
-  const slices: AllocationSlice[] = ranked.slice(0, max).map((item) => ({
+  const top = ranked.slice(0, max);
+  const colors = assignSeriesColors(top.map((item) => ({ id: item.groupId, key: item.label })));
+  const slices: AllocationSlice[] = top.map((item) => ({
     key: `item-${item.groupId}`,
     label: item.label,
     value: item.value,
     percentage: item.percentage,
     kind: "item",
-    color: colorForKey(item.label),
+    color: colors.get(item.groupId) ?? OTHER_COLOR,
   }));
 
   const tail = ranked.slice(max);
