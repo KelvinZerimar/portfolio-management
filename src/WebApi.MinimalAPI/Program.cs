@@ -37,7 +37,6 @@ app.UseOutputCache();
 
 app.RegisterEndpoints();
 
-app.MapHealthChecksUI();
 app.MapHealthChecks("/health/json", new HealthCheckOptions
 {
     ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
