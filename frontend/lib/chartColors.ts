@@ -1,11 +1,12 @@
 // A vivid categorical palette so each asset reads apart at a glance across the
-// history lines and the allocation slices. Deliberately clear of true red,
-// which stays reserved exclusively for negative movement.
+// history lines and the allocation slices. Deliberately clear of red AND of
+// red-adjacent hues (rose/pink read as red next to a negative delta), since red
+// stays reserved exclusively for negative movement.
 export const CHART_COLORS = [
   "#4f46e5", // indigo (brand)
   "#06b6d4", // cyan
   "#f59e0b", // amber
-  "#f43f5e", // rose
+  "#d946ef", // fuchsia (replaces rose, which read as the negative-red)
   "#10b981", // emerald
   "#8b5cf6", // violet
 ];

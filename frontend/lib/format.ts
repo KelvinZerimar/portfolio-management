@@ -8,11 +8,24 @@ const currencyFormatter = new Intl.NumberFormat("es-ES", {
   currency: "EUR",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+  // es-ES skips the thousands separator for 4-digit numbers by default
+  // (minimumGroupingDigits: 2), so "1957,54 €" sat next to "55.913,70 €" in the
+  // same column. "always" groups every figure the same way.
+  useGrouping: "always",
 });
 
 const quantityFormatter = new Intl.NumberFormat("es-ES", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 8,
+  useGrouping: "always",
+});
+
+// Same locale as currency, so percentages use a decimal comma too ("74,47 %"),
+// not the "74.47%" that toFixed produced.
+const percentageFormatter = new Intl.NumberFormat("es-ES", {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
 });
 
 // Timestamps are stored and transmitted in UTC (e.g. price-refresh snapshots use
@@ -41,8 +54,9 @@ export function formatQuantity(value: number): string {
   return quantityFormatter.format(value);
 }
 
+// `value` is on a 0–100 scale (what the API and callers use), not 0–1.
 export function formatPercentage(value: number): string {
-  return `${value.toFixed(2)}%`;
+  return percentageFormatter.format(value / 100);
 }
 
 export function formatDate(value: string | Date): string {
