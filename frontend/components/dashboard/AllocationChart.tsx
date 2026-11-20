@@ -31,7 +31,7 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
 
   // Top assets by value, Euro cash excluded (exchange grouping has no "Euro"
   // concept, so it's only capped, not filtered), capped at MAX_RANKED_ASSETS —
-  // matching the summary cards and the value history chart.
+  // matching the value history chart.
   const items = useMemo(() => {
     const raw = data?.items ?? [];
     const filtered = groupBy === "asset" ? raw.filter((item) => !isEuroAsset(item.label)) : raw;
@@ -61,7 +61,12 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
           Sin holdings todavía.
         </p>
       ) : (
-        <div className="mt-2 flex items-center gap-4">
+        // Donut on top, legend below as a value table: this panel replaced the
+        // per-asset summary cards (same top-N data shown a third time), so the
+        // legend now carries each group's value as well as its share — and
+        // stacking it fills the panel to the history chart's height instead of
+        // leaving the lower half empty.
+        <div className="mt-4 flex flex-col items-center gap-4">
           <div className="h-40 w-40 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -71,8 +76,10 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
                   nameKey="label"
                   innerRadius={48}
                   outerRadius={70}
-                  paddingAngle={1}
-                  stroke="var(--paper)"
+                  // Gap and white stroke separate slices; with a single slice
+                  // there is nothing to separate and they cut a notch in the ring.
+                  paddingAngle={items.length > 1 ? 1 : 0}
+                  stroke={items.length > 1 ? "var(--paper)" : "none"}
                   strokeWidth={2}
                   isAnimationActive={false}
                 >
@@ -93,18 +100,22 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <ul className="min-w-0 flex-1 space-y-1.5 text-sm">
+          <ul className="w-full divide-y divide-rule text-sm">
             {items.map((item) => (
-              <li key={item.groupId} className="flex items-center justify-between gap-2">
+              <li
+                key={item.groupId}
+                className="grid grid-cols-[minmax(0,1fr)_auto_4.5rem] items-center gap-x-3 py-1.5"
+              >
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span
                     aria-hidden
                     className="size-2 shrink-0 rounded-full"
                     style={{ background: colorForKey(item.label) }}
                   />
-                  <span className="truncate">{item.label}</span>
+                  <span className="truncate font-medium">{item.label}</span>
                 </span>
-                <span className="tabular shrink-0 text-ink-muted">
+                <span className="tabular text-right">{formatCurrency(item.value)}</span>
+                <span className="tabular text-right text-ink-muted">
                   {formatPercentage(item.percentage)}
                 </span>
               </li>
