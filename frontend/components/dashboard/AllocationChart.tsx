@@ -8,8 +8,8 @@ import { usePortfolioAllocation } from "@/hooks/usePortfolioAnalytics";
 import { PortfolioAllocationGroupBy } from "@/types";
 import { formatCurrency, formatPercentage } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
-import { colorForKey } from "@/lib/chartColors";
-import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
+import { MAX_RANKED_ASSETS } from "@/lib/assetFilters";
+import { buildAllocationSlices } from "@/lib/allocationSlices";
 
 type GroupBy = "asset" | "exchange";
 
@@ -29,14 +29,17 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
     groupBy === "asset" ? PortfolioAllocationGroupBy.Asset : PortfolioAllocationGroupBy.Exchange
   );
 
-  // Top assets by value, Euro cash excluded (exchange grouping has no "Euro"
-  // concept, so it's only capped, not filtered), capped at MAX_RANKED_ASSETS —
-  // matching the value history chart.
-  const items = useMemo(() => {
-    const raw = data?.items ?? [];
-    const filtered = groupBy === "asset" ? raw.filter((item) => !isEuroAsset(item.label)) : raw;
-    return [...filtered].sort((a, b) => b.value - a.value).slice(0, MAX_RANKED_ASSETS);
-  }, [data, groupBy]);
+  // Top MAX_RANKED_ASSETS by value (same ranking as the history chart), plus
+  // "Otros" and — by asset only — "Efectivo", so the ring adds up to the total
+  // its percentage labels are measured against.
+  const items = useMemo(
+    () =>
+      buildAllocationSlices(data?.items ?? [], {
+        separateCash: groupBy === "asset",
+        max: MAX_RANKED_ASSETS,
+      }),
+    [data, groupBy]
+  );
 
   return (
     <section className="panel p-6" aria-label="Participación por activo o exchange">
@@ -84,7 +87,7 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
                   isAnimationActive={false}
                 >
                   {items.map((item) => (
-                    <Cell key={item.groupId} fill={colorForKey(item.label)} />
+                    <Cell key={item.key} fill={item.color} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -103,16 +106,20 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
           <ul className="w-full divide-y divide-rule text-sm">
             {items.map((item) => (
               <li
-                key={item.groupId}
+                key={item.key}
                 className="grid grid-cols-[minmax(0,1fr)_auto_4.5rem] items-center gap-x-3 py-1.5"
               >
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span
                     aria-hidden
                     className="size-2 shrink-0 rounded-full"
-                    style={{ background: colorForKey(item.label) }}
+                    style={{ background: item.color }}
                   />
-                  <span className="truncate font-medium">{item.label}</span>
+                  <span
+                    className={`truncate ${item.kind === "item" ? "font-medium" : "text-ink-muted"}`}
+                  >
+                    {item.label}
+                  </span>
                 </span>
                 <span className="tabular text-right">{formatCurrency(item.value)}</span>
                 <span className="tabular text-right text-ink-muted">
