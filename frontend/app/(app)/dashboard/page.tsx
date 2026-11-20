@@ -15,8 +15,14 @@ import { ErrorNotice } from "@/components/ui/ErrorNotice";
 import { HoldingsTable } from "@/components/dashboard/HoldingsTable";
 import { LatestNotesWidget } from "@/components/dashboard/LatestNotesWidget";
 import { ValueHistoryChart } from "@/components/dashboard/ValueHistoryChart";
-import { formatCurrency } from "@/lib/format";
+import { formatCurrency, formatDate, formatSignedCurrency, formatSignedPercentage } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
+import {
+  filterHistoryByRange,
+  HISTORY_RANGE_PHRASE,
+  historyChange,
+  type HistoryRange,
+} from "@/lib/historyRange";
 
 export default function DashboardPage() {
   const {
@@ -59,7 +65,20 @@ export default function DashboardPage() {
   // No live feed and no price movement between entries (product principle: manual
   // entry is the source of truth) — the latest history point IS the current value,
   // so there's no need for a second endpoint call to fetch it separately.
-  const currentValue = history?.points.at(-1)?.value;
+  const latestPoint = history?.points.at(-1);
+  const currentValue = latestPoint?.value;
+
+  // Range lives here, not in the chart: the headline change and the chart must
+  // describe the same period.
+  const [range, setRange] = useState<HistoryRange>("90d");
+  // Date.now() is impure and must not run during render; a lazy useState
+  // initializer is the sanctioned one-time read (moved here from the chart).
+  const [now] = useState(() => Date.now());
+  const rangePoints = useMemo(
+    () => filterHistoryByRange(history?.points ?? [], range, now),
+    [history, range, now]
+  );
+  const change = historyChange(rangePoints);
 
   if (portfoliosPending) {
     return <DashboardSkeleton />;
@@ -115,6 +134,23 @@ export default function DashboardPage() {
         <p className="tabular text-4xl font-extrabold">
           {currentValue !== undefined ? formatCurrency(currentValue) : "—"}
         </p>
+        {latestPoint && (
+          // Manual entry is the source of truth, so "as of when" is part of the
+          // figure, not a footnote. Red only for a negative change (no green).
+          <p className="mt-1 flex flex-wrap items-baseline gap-x-2 text-sm text-ink-muted">
+            <span>a {formatDate(latestPoint.date)}</span>
+            {change && (
+              <>
+                <span aria-hidden>·</span>
+                <span className={`tabular font-semibold ${change.amount < 0 ? "text-accent" : "text-ink"}`}>
+                  {formatSignedCurrency(change.amount)}
+                  {change.percentage !== null && ` (${formatSignedPercentage(change.percentage)})`}
+                </span>
+                <span>{HISTORY_RANGE_PHRASE[range]}</span>
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       <AlertsStrip holdings={holdings} />
@@ -130,9 +166,10 @@ export default function DashboardPage() {
           </div>
         ) : (
           <ValueHistoryChart
-            points={history?.points ?? []}
+            points={rangePoints}
             byAsset={history?.byAsset ?? []}
-            currentValue={currentValue}
+            range={range}
+            onRangeChange={setRange}
           />
         )}
         <AllocationChart portfolioId={activePortfolioId} />
