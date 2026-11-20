@@ -37,7 +37,7 @@ interface ValueHistoryChartProps {
 // day's reading — and the Y axis is visible with no gradient fill, because an
 // unlabeled auto-domain area made small moves look like crashes.
 export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: ValueHistoryChartProps) {
-  // Same ranking as the summary cards: top assets by latest value, Euro cash
+  // Same ranking as the allocation chart: top assets by value, Euro cash
   // excluded, capped at MAX_RANKED_ASSETS so the chart doesn't get overcrowded.
   const rankedAssets = useMemo(
     () =>
