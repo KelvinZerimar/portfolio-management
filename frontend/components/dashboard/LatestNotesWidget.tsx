@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useLatestNotes } from "@/hooks/useNotes";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
-import { RichTextContent } from "@/components/ui/RichTextContent";
 import { formatDate } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
 
 // Mirrors HoldingsTable's panel shell, but as a simple list — ten items don't
 // need sorting/filtering/export the way a full holdings table does.
+// Deliberately shows only title, category and date, never the note body: notes
+// hold credentials and bank details, and the dashboard is the most-seen (and
+// most-screenshotted) page. The full content stays behind /notes.
 export function LatestNotesWidget() {
   const { data, isPending, isError, error } = useLatestNotes(10);
   const notes = data ?? [];
@@ -44,7 +46,6 @@ export function LatestNotesWidget() {
                   {note.category}
                 </span>
               </div>
-              <RichTextContent html={note.content} className="line-clamp-2 text-sm text-ink-muted" />
               <span className="text-xs text-ink-muted">{formatDate(note.createdAt)}</span>
             </li>
           ))}
