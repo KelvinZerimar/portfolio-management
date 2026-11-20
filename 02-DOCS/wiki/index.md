@@ -21,6 +21,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Dashboard: privacidad de notas y paleta](ftd/dashboard-notes-privacy-and-palette.md)
 - [Dashboard: contexto en la cifra principal y eje del histórico](ftd/dashboard-hero-context-and-history-axis.md)
 - [Dashboard: quitar tarjetas por activo duplicadas](ftd/dashboard-remove-duplicate-asset-cards.md)
+- [Dashboard: el donut suma el total real](ftd/dashboard-allocation-donut-totals.md)
 
 ## sdd
 - [Constitution (draft)](sdd/constitution.md)
@@ -40,6 +41,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Agente MAF con tool-calling](sdd/analysis/maf-tool-calling-agent.md) — GATE: PASS (ejecución 4: 0 HIGH; 9 MEDIUM/LOW corregidos, 4 aceptados), 2026-11-11
 
 ### sdd/verifications
+- [dashboard-allocation-donut-totals (FTD)](sdd/verifications/dashboard-allocation-donut-totals-2026-11-20.md) — PASS (lint, tsc, build; checklist con prueba), 2026-11-20
 - [dashboard-remove-duplicate-asset-cards (FTD)](sdd/verifications/dashboard-remove-duplicate-asset-cards-2026-11-20.md) — PASS (lint, tsc, build; checklist con prueba), 2026-11-20
 - [dashboard-hero-context-and-history-axis (FTD)](sdd/verifications/dashboard-hero-context-and-history-axis-2026-11-20.md) — PASS (lint, tsc, build; checklist con prueba), 2026-11-20
 - [dashboard-notes-privacy-and-palette (FTD)](sdd/verifications/dashboard-notes-privacy-and-palette-2026-11-20.md) — PASS (lint, tsc, build; checklist con prueba), 2026-11-20
