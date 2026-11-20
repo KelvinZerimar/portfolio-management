@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { SegmentedControl } from "@/components/ui/SegmentedControl";
 import { formatCompactCurrency, formatCurrency, formatDate, formatShortDate } from "@/lib/format";
-import { colorForKey } from "@/lib/chartColors";
+import { assignSeriesColors } from "@/lib/chartColors";
 import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
 import { HISTORY_RANGE_OPTIONS, valueAsOf, type HistoryRange } from "@/lib/historyRange";
 import type { PortfolioAssetHistorySeriesResponse, PortfolioHistoryPointResponse } from "@/types";
@@ -71,15 +71,20 @@ export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: Val
     }));
   }, [points, rankedAssets, showAssetLines]);
 
-  const legend = useMemo(
-    () =>
-      showAssetLines
-        ? [...rankedAssets]
-            .map((series) => ({ symbol: series.symbol, color: colorForKey(series.symbol) }))
-            .sort((a, b) => a.symbol.localeCompare(b.symbol))
-        : [],
-    [rankedAssets, showAssetLines]
-  );
+  // Same top-N set and same assignment as the allocation donut, so an asset
+  // wears the same color in both charts.
+  const legend = useMemo(() => {
+    if (!showAssetLines) return [];
+    const colors = assignSeriesColors(
+      rankedAssets.map((series) => ({ id: series.cryptoCurrencyId, key: series.symbol }))
+    );
+    return rankedAssets
+      .map((series) => ({
+        symbol: series.symbol,
+        color: colors.get(series.cryptoCurrencyId) ?? "var(--rule-strong)",
+      }))
+      .sort((a, b) => a.symbol.localeCompare(b.symbol));
+  }, [rankedAssets, showAssetLines]);
 
   const first = merged[0];
   const last = merged[merged.length - 1];
