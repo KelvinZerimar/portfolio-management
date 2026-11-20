@@ -80,9 +80,9 @@ internal sealed class MafAgentReadTools(
         Tool(GetPortfolioHistory),
         Tool(GetPortfolioAllocation),
         Tool(ListCryptoCurrencies),
-        //Tool(ListExchanges),
-        //Tool(ListNotes),
-        //Tool(GetNote),
+        Tool(ListExchanges),
+        Tool(ListNotes),
+        Tool(GetNote),
     ];
 
     // ---- inherited from the SK agent (parity) ----

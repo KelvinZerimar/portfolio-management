@@ -227,14 +227,6 @@ public sealed class MafAgentModelChecklistTests : IAsyncLifetime
                 services.AddSingleton(Substitute.For<IEmailSender>());
                 services.RemoveAll<ICoinGeckoClient>();
                 services.AddSingleton(Substitute.For<ICoinGeckoClient>());
-                foreach (ServiceDescriptor collector in services
-                    .Where(d => d.ServiceType == typeof(IHostedService) &&
-                                d.ImplementationType?.Namespace?.StartsWith("HealthChecks.UI", StringComparison.Ordinal) == true)
-                    .ToList())
-                {
-                    services.Remove(collector);
-                }
-
                 services.AddAuthentication(TestAuthHandler.SchemeName)
                     .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
                 services.PostConfigure<AuthenticationOptions>(options =>
