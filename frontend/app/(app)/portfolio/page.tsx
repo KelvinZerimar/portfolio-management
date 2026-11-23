@@ -43,7 +43,38 @@ export default function PortfolioListPage() {
         ) : isError ? (
           <ErrorNotice>{getApiErrorMessage(error) ?? "No se pudieron cargar los portfolios."}</ErrorNotice>
         ) : (
-          <table className="w-full border-collapse text-sm">
+          <>
+          {/* Below sm the four-column table measured 394px inside a 358px
+              overflow-hidden panel: the Acciones column was clipped and a
+              portfolio could not be deleted on a phone. A stacked list keeps
+              every field and the actions in view. */}
+          <ul aria-label="Portfolios" className="divide-y divide-rule text-sm sm:hidden">
+            {items.length === 0 ? (
+              <li className="px-4 py-8 text-center text-ink-muted">Todavía no tienes portfolios.</li>
+            ) : (
+              items.map((item) => (
+                <li key={item.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <Link
+                      href={`/portfolio/${item.id}`}
+                      className="font-medium underline-offset-2 hover:underline"
+                    >
+                      {item.name}
+                    </Link>
+                    {item.description && <span className="text-ink-muted">{item.description}</span>}
+                    <span className="text-xs text-ink-muted">Creado el {formatDate(item.createdAt)}</span>
+                  </div>
+                  <span className="shrink-0 pt-0.5">
+                    <RowActions
+                      onDelete={() => deleteMutation.mutate(item.id)}
+                      deleting={deleteMutation.isPending && deleteMutation.variables === item.id}
+                    />
+                  </span>
+                </li>
+              ))
+            )}
+          </ul>
+          <table className="hidden w-full border-collapse text-sm sm:table">
             <thead>
               <tr className="border-b border-rule-strong text-left text-xs tracking-wide text-ink-muted uppercase">
                 <th className="px-4 py-2 font-medium">Nombre</th>
@@ -85,6 +116,7 @@ export default function PortfolioListPage() {
               ))}
             </tbody>
           </table>
+          </>
         )}
 
         <form

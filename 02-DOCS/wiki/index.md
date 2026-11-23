@@ -30,6 +30,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Dashboard: el Total del histórico, solo en el tooltip](ftd/dashboard-history-total-in-tooltip.md)
 - [Dashboard: estado de orden en Holdings (aria-sort y flecha)](ftd/dashboard-holdings-sort-state.md)
 - [Dashboard: sin recuadro negro al pulsar los gráficos](ftd/dashboard-chart-focus-ring.md)
+- [Portfolio: vista móvil (lista y detalle)](ftd/portfolio-mobile.md)
 
 ## sdd
 - [Constitution (draft)](sdd/constitution.md)
@@ -49,6 +50,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Agente MAF con tool-calling](sdd/analysis/maf-tool-calling-agent.md) — GATE: PASS (ejecución 4: 0 HIGH; 9 MEDIUM/LOW corregidos, 4 aceptados), 2026-11-11
 
 ### sdd/verifications
+- [portfolio-mobile (FTD)](sdd/verifications/portfolio-mobile-2026-11-23.md) — PASS (lint, tsc, build; 6 anchos), 2026-11-23
 - [dashboard-chart-focus-ring (FTD)](sdd/verifications/dashboard-chart-focus-ring-2026-11-23.md) — PASS (lint, tsc, build; foco por ratón y teclado), 2026-11-23
 - [dashboard-holdings-sort-state (FTD)](sdd/verifications/dashboard-holdings-sort-state-2026-11-23.md) — PASS (lint, tsc, build; 6 pasos de orden), 2026-11-23
 - [dashboard-history-total-in-tooltip (FTD)](sdd/verifications/dashboard-history-total-in-tooltip-2026-11-23.md) — PASS (lint, tsc, build; varios activos y uno), 2026-11-23

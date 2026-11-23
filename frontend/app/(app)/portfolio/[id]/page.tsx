@@ -243,7 +243,62 @@ export default function PortfolioDetailPage({
             {getApiErrorMessage(entriesErrorDetail) ?? "No se pudieron cargar las entradas."}
           </ErrorNotice>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Below lg the seven-column table (720px) hid Valor, Fecha and the
+              actions behind a scroll nobody could see: the panel is 358px on a
+              phone and 480–612px between md and lg once the sidebar appears.
+              Same entries, stacked: asset + value; exchange · quantity × price
+              · date; actions. The table takes over at lg, where it fits. */}
+          <ul aria-label="Entradas" className="divide-y divide-rule text-sm lg:hidden">
+            {entries.length === 0 ? (
+              <li className="px-4 py-8 text-center text-ink-muted">
+                {hasActiveFilters
+                  ? "Ninguna entrada coincide con los filtros seleccionados."
+                  : "Todavía no hay entradas en este portfolio."}
+              </li>
+            ) : (
+              entries.map((entry) =>
+                editingId === entry.id ? (
+                  <EditEntryCard
+                    key={entry.id}
+                    entry={entry}
+                    portfolioId={portfolioId}
+                    cryptoCurrencies={cryptoCurrencies}
+                    exchanges={exchanges}
+                    onDone={() => setEditingId(null)}
+                  />
+                ) : (
+                  <li key={entry.id} className="flex flex-col gap-1 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-medium">
+                        {cryptoById.get(entry.cryptoCurrencyId)?.symbol ?? `#${entry.cryptoCurrencyId}`}
+                      </span>
+                      <span className="tabular font-semibold">
+                        {formatCurrency(entry.quantity * entry.pricePerUnit)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 text-xs text-ink-muted">
+                      <span className="min-w-0">
+                        {exchangeById.get(entry.exchangeId)?.name ?? `#${entry.exchangeId}`} ·{" "}
+                        <span className="tabular">
+                          {formatQuantity(entry.quantity)} × {formatCurrency(entry.pricePerUnit)}
+                        </span>{" "}
+                        <span className="whitespace-nowrap">· {formatDate(entry.recordedAt)}</span>
+                      </span>
+                      <span className="shrink-0">
+                        <RowActions
+                          onEdit={() => setEditingId(entry.id)}
+                          onDelete={() => deleteMutation.mutate(entry.id)}
+                          deleting={deleteMutation.isPending && deleteMutation.variables === entry.id}
+                        />
+                      </span>
+                    </div>
+                  </li>
+                )
+              )
+            )}
+          </ul>
+          <div className="hidden overflow-x-auto lg:block">
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-rule-strong text-left text-xs tracking-wide text-ink-muted uppercase">
@@ -315,6 +370,7 @@ export default function PortfolioDetailPage({
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {entriesPage && (
@@ -443,19 +499,17 @@ export default function PortfolioDetailPage({
   );
 }
 
-function EditEntryRow({
-  entry,
-  portfolioId,
-  cryptoCurrencies,
-  exchanges,
-  onDone,
-}: {
+interface EditEntryProps {
   entry: PortfolioEntryResponse;
   portfolioId: number;
   cryptoCurrencies: CryptoCurrencyResponse[];
   exchanges: ExchangeResponse[];
   onDone: () => void;
-}) {
+}
+
+// Edit state and save, shared by the desktop table row and the phone card so
+// both submit exactly the same thing.
+function useEntryEditor(entry: PortfolioEntryResponse, portfolioId: number, onDone: () => void) {
   const [cryptoCurrencyId, setCryptoCurrencyId] = useState(String(entry.cryptoCurrencyId));
   const [exchangeId, setExchangeId] = useState(String(entry.exchangeId));
   const [quantity, setQuantity] = useState(String(entry.quantity));
@@ -476,6 +530,106 @@ function EditEntryRow({
       { onSuccess: onDone }
     );
   }
+
+  return {
+    cryptoCurrencyId, setCryptoCurrencyId,
+    exchangeId, setExchangeId,
+    quantity, setQuantity,
+    pricePerUnit, setPricePerUnit,
+    recordedAt, setRecordedAt,
+    saving: updateMutation.isPending,
+    handleSave,
+  };
+}
+
+function EditEntryCard({ entry, portfolioId, cryptoCurrencies, exchanges, onDone }: EditEntryProps) {
+  const editor = useEntryEditor(entry, portfolioId, onDone);
+  const idPrefix = `edit-entry-${entry.id}`;
+
+  return (
+    <li className="flex flex-col gap-3 bg-paper-raised px-4 py-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <SelectField
+          label="Activo"
+          id={`${idPrefix}-asset`}
+          value={editor.cryptoCurrencyId}
+          onChange={(e) => editor.setCryptoCurrencyId(e.target.value)}
+        >
+          {cryptoCurrencies.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.symbol}
+            </option>
+          ))}
+        </SelectField>
+        <SelectField
+          label="Exchange"
+          id={`${idPrefix}-exchange`}
+          value={editor.exchangeId}
+          onChange={(e) => editor.setExchangeId(e.target.value)}
+        >
+          {exchanges.map((ex) => (
+            <option key={ex.id} value={ex.id}>
+              {ex.name}
+            </option>
+          ))}
+        </SelectField>
+        <TextField
+          label="Cantidad"
+          id={`${idPrefix}-quantity`}
+          type="number"
+          step="any"
+          inputMode="decimal"
+          value={editor.quantity}
+          onChange={(e) => editor.setQuantity(e.target.value)}
+          className="tabular w-full text-right"
+        />
+        <TextField
+          label="Precio"
+          id={`${idPrefix}-price`}
+          type="number"
+          step="any"
+          inputMode="decimal"
+          value={editor.pricePerUnit}
+          onChange={(e) => editor.setPricePerUnit(e.target.value)}
+          className="tabular w-full text-right"
+        />
+        <TextField
+          label="Fecha"
+          id={`${idPrefix}-date`}
+          type="date"
+          value={editor.recordedAt}
+          onChange={(e) => editor.setRecordedAt(e.target.value)}
+          className="w-full"
+        />
+        <div className="flex flex-col justify-end gap-1 text-xs text-ink-muted">
+          Valor
+          <span className="tabular py-2 text-sm text-ink">
+            {formatCurrency(Number(editor.quantity || 0) * Number(editor.pricePerUnit || 0))}
+          </span>
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={onDone}>
+          Cancelar
+        </Button>
+        <Button onClick={editor.handleSave} disabled={editor.saving}>
+          {editor.saving ? "Guardando…" : "Guardar"}
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone }: EditEntryProps) {
+  const {
+    cryptoCurrencyId, setCryptoCurrencyId,
+    exchangeId, setExchangeId,
+    quantity, setQuantity,
+    pricePerUnit, setPricePerUnit,
+    recordedAt, setRecordedAt,
+    saving,
+    handleSave,
+  } = useEntryEditor(entry, portfolioId, onDone);
 
   const inputClassName =
     "w-full rounded-lg border border-rule bg-paper px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-brand";
@@ -539,7 +693,7 @@ function EditEntryRow({
       </td>
       <td className="px-4 py-2 text-right">
         <span className="inline-flex items-center gap-3">
-          <IconButton aria-label="Guardar" onClick={handleSave} disabled={updateMutation.isPending}>
+          <IconButton aria-label="Guardar" onClick={handleSave} disabled={saving}>
             <Check size={14} strokeWidth={1.75} aria-hidden />
           </IconButton>
           <IconButton aria-label="Cancelar" onClick={onDone}>
