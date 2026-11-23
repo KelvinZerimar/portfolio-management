@@ -99,7 +99,40 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
           Todavía no hay holdings registrados en este portfolio.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Below sm the six-column table needs 640px and hid Cantidad, Precio and
+            Registrado off-screen behind a scroll nobody could see. A stacked list
+            shows every field at 390px instead; same filtered/sorted rows. */}
+        <ul className="divide-y divide-rule text-sm sm:hidden" aria-label="Holdings">
+          {rows.length === 0 ? (
+            <li className="px-4 py-8 text-center text-ink-muted">
+              Ningún activo coincide con &ldquo;{query}&rdquo;.
+            </li>
+          ) : (
+            rows.map((h) => (
+              <li key={`${h.cryptoCurrencyId}-${h.exchangeId}`} className="flex flex-col gap-1 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <AssetAvatar holding={h} />
+                    <span className="font-medium">{h.cryptoCurrencySymbol}</span>
+                    <span className="truncate text-ink-muted">{h.cryptoCurrencyName}</span>
+                  </span>
+                  <span className="tabular shrink-0 font-semibold">{formatCurrency(h.value)}</span>
+                </div>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 pl-7 text-xs text-ink-muted">
+                  <span>
+                    {h.exchangeName} ·{" "}
+                    <span className="tabular">
+                      {formatQuantity(h.quantity)} × {formatCurrency(h.pricePerUnit)}
+                    </span>
+                  </span>
+                  <span>{formatDate(h.recordedAt)}</span>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-rule-strong text-left text-xs tracking-wide text-ink-muted uppercase">
@@ -147,23 +180,7 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        {h.cryptoCurrencyImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={h.cryptoCurrencyImage}
-                            alt=""
-                            aria-hidden
-                            className="size-5 shrink-0 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span
-                            aria-hidden
-                            className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                            style={{ background: colorForKey(h.cryptoCurrencySymbol) }}
-                          >
-                            {h.cryptoCurrencySymbol.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
+                        <AssetAvatar holding={h} />
                         <span className="font-medium">{h.cryptoCurrencySymbol}</span>{" "}
                         <span className="text-ink-muted">{h.cryptoCurrencyName}</span>
                       </div>
@@ -185,7 +202,28 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </section>
+  );
+}
+
+function AssetAvatar({ holding }: { holding: PortfolioHoldingItemResponse }) {
+  return holding.cryptoCurrencyImage ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={holding.cryptoCurrencyImage}
+      alt=""
+      aria-hidden
+      className="size-5 shrink-0 rounded-full object-cover"
+    />
+  ) : (
+    <span
+      aria-hidden
+      className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+      style={{ background: colorForKey(holding.cryptoCurrencySymbol) }}
+    >
+      {holding.cryptoCurrencySymbol.slice(0, 2).toUpperCase()}
+    </span>
   );
 }

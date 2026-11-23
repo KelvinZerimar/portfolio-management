@@ -91,10 +91,12 @@ export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: Val
 
   return (
     <section className="panel p-6" aria-label="Histórico de valor">
-      <div className="flex items-start justify-between gap-3">
+      {/* Wraps on narrow panels: the range control drops below instead of
+          squeezing the date range onto two lines. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold">Histórico</h2>
-          <p className="mt-0.5 text-xs text-ink-muted">
+          <p className="mt-0.5 text-xs whitespace-nowrap text-ink-muted">
             {first && last && first !== last
               ? `${formatDate(first.date)} – ${formatDate(last.date)}`
               : "Sin datos suficientes en este rango"}
