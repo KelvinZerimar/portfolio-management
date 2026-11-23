@@ -11,6 +11,8 @@ import { getApiErrorMessage } from "@/lib/errors";
 // Deliberately shows only title, category and date, never the note body: notes
 // hold credentials and bank details, and the dashboard is the most-seen (and
 // most-screenshotted) page. The full content stays behind /notes.
+const MOBILE_NOTES = 3;
+
 export function LatestNotesWidget() {
   const { data, isPending, isError, error } = useLatestNotes(10);
   const notes = data ?? [];
@@ -38,8 +40,12 @@ export function LatestNotesWidget() {
         </p>
       ) : (
         <ul className="divide-y divide-rule">
-          {notes.map((note) => (
-            <li key={note.id} className="flex flex-col gap-1 px-6 py-3">
+          {notes.map((note, index) => (
+            // Three on phones: ten notes took about half the page height there.
+            <li
+              key={note.id}
+              className={`flex-col gap-1 px-6 py-3 ${index < MOBILE_NOTES ? "flex" : "hidden sm:flex"}`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{note.title}</span>
                 <span className="rounded-full bg-paper-raised px-2 py-0.5 text-[11px] font-medium text-ink-muted">

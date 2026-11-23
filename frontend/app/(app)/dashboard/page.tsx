@@ -123,10 +123,12 @@ export default function DashboardPage() {
             onClick={() => setAssistantOpen(true)}
             aria-haspopup="dialog"
             aria-expanded={assistantOpen}
+            aria-label="Asistente"
           >
             <span className="flex items-center gap-1.5">
               <Bot size={16} strokeWidth={1.75} aria-hidden />
-              Asistente
+              {/* Icon only on phones, so the portfolio name keeps one line. */}
+              <span className="hidden sm:inline">Asistente</span>
             </span>
           </Button>
         </div>
