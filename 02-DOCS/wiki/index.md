@@ -28,6 +28,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Dashboard: filas de Holdings en una línea (fecha y nombre)](ftd/dashboard-holdings-date-column.md)
 - [Dashboard: cabeceras de Holdings en mayúsculas](ftd/dashboard-holdings-column-headers.md)
 - [Dashboard: estado de orden en Holdings (aria-sort y flecha)](ftd/dashboard-holdings-sort-state.md)
+- [Dashboard: sin recuadro negro al pulsar los gráficos](ftd/dashboard-chart-focus-ring.md)
 
 ## sdd
 - [Constitution (draft)](sdd/constitution.md)
@@ -47,6 +48,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Agente MAF con tool-calling](sdd/analysis/maf-tool-calling-agent.md) — GATE: PASS (ejecución 4: 0 HIGH; 9 MEDIUM/LOW corregidos, 4 aceptados), 2026-11-11
 
 ### sdd/verifications
+- [dashboard-chart-focus-ring (FTD)](sdd/verifications/dashboard-chart-focus-ring-2026-11-23.md) — PASS (lint, tsc, build; foco por ratón y teclado), 2026-11-23
 - [dashboard-holdings-sort-state (FTD)](sdd/verifications/dashboard-holdings-sort-state-2026-11-23.md) — PASS (lint, tsc, build; 6 pasos de orden), 2026-11-23
 - [dashboard-holdings-column-headers (FTD)](sdd/verifications/dashboard-holdings-column-headers-2026-11-23.md) — PASS (lint, tsc, build; estilos calculados), 2026-11-23
 - [dashboard-holdings-date-column (FTD)](sdd/verifications/dashboard-holdings-date-column-2026-11-23.md) — PASS (lint, tsc, build; 4 anchos), 2026-11-23
