@@ -27,6 +27,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Dashboard: cabecera de Holdings y rejilla sin desborde](ftd/dashboard-holdings-header.md)
 - [Dashboard: filas de Holdings en una línea (fecha y nombre)](ftd/dashboard-holdings-date-column.md)
 - [Dashboard: cabeceras de Holdings en mayúsculas](ftd/dashboard-holdings-column-headers.md)
+- [Dashboard: el Total del histórico, solo en el tooltip](ftd/dashboard-history-total-in-tooltip.md)
 - [Dashboard: estado de orden en Holdings (aria-sort y flecha)](ftd/dashboard-holdings-sort-state.md)
 
 ## sdd
@@ -48,6 +49,7 @@ timestamp: 2026-11-11T12:00:00Z
 
 ### sdd/verifications
 - [dashboard-holdings-sort-state (FTD)](sdd/verifications/dashboard-holdings-sort-state-2026-11-23.md) — PASS (lint, tsc, build; 6 pasos de orden), 2026-11-23
+- [dashboard-history-total-in-tooltip (FTD)](sdd/verifications/dashboard-history-total-in-tooltip-2026-11-23.md) — PASS (lint, tsc, build; varios activos y uno), 2026-11-23
 - [dashboard-holdings-column-headers (FTD)](sdd/verifications/dashboard-holdings-column-headers-2026-11-23.md) — PASS (lint, tsc, build; estilos calculados), 2026-11-23
 - [dashboard-holdings-date-column (FTD)](sdd/verifications/dashboard-holdings-date-column-2026-11-23.md) — PASS (lint, tsc, build; 4 anchos), 2026-11-23
 - [dashboard-holdings-header (FTD)](sdd/verifications/dashboard-holdings-header-2026-11-23.md) — PASS (lint, tsc, build; 5 anchos), 2026-11-23
