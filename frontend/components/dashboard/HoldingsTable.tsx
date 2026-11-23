@@ -63,12 +63,24 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     <section aria-label="Holdings actuales" className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule px-6 py-4">
         <h2 className="text-sm font-bold">Holdings</h2>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* One row from sm up: the search used to be w-full inside a wrapping
+            flex row, so it always claimed a line of its own and doubled the
+            header's height. Search first (the frequent action), exports after.
+            On phones the search still spans the full width, exports below. */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filtrar por activo o exchange…"
+            aria-label="Filtrar holdings por activo o exchange"
+            className="w-full rounded-lg border border-rule bg-paper px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand sm:w-64"
+          />
           <button
             type="button"
             onClick={() => exportHoldingsToCsv(rows, `holdings-${new Date().toISOString().slice(0, 10)}`)}
             disabled={rows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download size={14} strokeWidth={1.75} aria-hidden />
             CSV
@@ -79,18 +91,11 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
               exportHoldingsToExcel(rows, `holdings-${new Date().toISOString().slice(0, 10)}`)
             }
             disabled={rows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download size={14} strokeWidth={1.75} aria-hidden />
             Excel
           </button>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filtrar por activo o exchange…"
-            className="w-full max-w-64 rounded-lg border border-rule bg-paper px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand"
-          />
         </div>
       </div>
 

@@ -103,7 +103,7 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <ul className="w-full divide-y divide-rule text-sm">
+          <ul className="w-full max-w-sm divide-y divide-rule text-sm">
             {items.map((item) => (
               <li
                 key={item.key}
