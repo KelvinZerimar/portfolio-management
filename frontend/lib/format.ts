@@ -101,6 +101,23 @@ export function formatDate(value: string | Date): string {
   return dateFormatter.format(new Date(value));
 }
 
+const dateTimeFormatter = new Intl.DateTimeFormat("es-ES", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/Madrid",
+});
+
+// Ledger timestamps: entries typed in by hand carry a date only (stored as 00:00
+// UTC), so showing "01:00" for them would be noise. Entries written with a real
+// time (e.g. "Actualizar precios", which stamps the moment it ran) show it.
+export function formatRecordedAt(value: string): string {
+  const isDateOnly = /T00:00:00(\.0+)?(Z|\+00:00)?$/.test(value);
+  return isDateOnly ? dateFormatter.format(new Date(value)) : dateTimeFormatter.format(new Date(value));
+}
+
 export function formatShortDate(value: string | Date): string {
   return shortDateFormatter.format(new Date(value));
 }

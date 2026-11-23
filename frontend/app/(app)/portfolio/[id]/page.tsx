@@ -2,7 +2,7 @@
 
 import { type FormEvent, use, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, X } from "lucide-react";
+import { Check, RefreshCw, X } from "lucide-react";
 import { useCryptoCurrencies } from "@/hooks/useCryptoCurrencies";
 import { useExchanges } from "@/hooks/useExchanges";
 import { usePortfolio } from "@/hooks/usePortfolios";
@@ -20,12 +20,23 @@ import { Pagination } from "@/components/ui/Pagination";
 import { RowActions } from "@/components/ui/RowActions";
 import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
-import { formatCurrency, formatDate, formatQuantity } from "@/lib/format";
-import { getApiErrorMessage } from "@/lib/errors";
+import { formatCurrency, formatDate, formatQuantity, formatRecordedAt } from "@/lib/format";
+import { getApiError, getApiErrorMessage } from "@/lib/errors";
 import type { CryptoCurrencyResponse, ExchangeResponse, PortfolioEntryResponse } from "@/types";
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// The API refuses a second entry for the same asset + exchange at the same
+// moment (409 PortfolioEntry.Duplicate): the valuation keeps the latest one and
+// a tie would make the portfolio value arbitrary. Returns the existing entry's
+// id when the error is that one.
+function duplicateEntryId(error: unknown): number | null {
+  const apiError = getApiError(error);
+  if (apiError?.code !== "PortfolioEntry.Duplicate") return null;
+  const id = Number(apiError.metadata.existingEntryId);
+  return Number.isFinite(id) ? id : null;
 }
 
 export default function PortfolioDetailPage({
@@ -97,6 +108,16 @@ export default function PortfolioDetailPage({
   const [formError, setFormError] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState(false);
 
+  const createDuplicateId = createMutation.isError ? duplicateEntryId(createMutation.error) : null;
+
+  // Narrows the ledger to the clashing entry's asset and date (it may sit on
+  // another page or behind other filters) and opens it for editing.
+  function openExistingEntry(entryId: number) {
+    updateFilters({ cryptoCurrencyId, fromDate: recordedAt, toDate: recordedAt });
+    setEditingId(entryId);
+    createMutation.reset();
+  }
+
   const referenceDataFailed = cryptoError || exchangeError;
   const canAddEntry = !referenceDataFailed && cryptoCurrencies.length > 0 && exchanges.length > 0;
 
@@ -166,26 +187,40 @@ export default function PortfolioDetailPage({
               <p className="text-sm text-ink-muted">{portfolio.description}</p>
             )}
           </div>
-          <Button
-            variant="ghost"
-            onClick={() => refreshMutation.mutate()}
-            disabled={refreshMutation.isPending}
-          >
-            {refreshMutation.isPending ? "Actualizando precios…" : "Actualizar precios"}
-          </Button>
+          {/* This writes to the ledger: one new entry per held asset at the
+              current CoinGecko price, stamped with the time it ran. It used to
+              be a bare text button labelled "Actualizar precios", which read as
+              a harmless refresh of the view. */}
+          <div className="flex max-w-xs flex-col items-start gap-1 sm:items-end sm:text-right">
+            <Button
+              variant="ghost"
+              onClick={() => refreshMutation.mutate()}
+              disabled={refreshMutation.isPending}
+              aria-describedby="refresh-prices-help"
+              className="border border-rule"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <RefreshCw size={14} strokeWidth={1.75} aria-hidden />
+                {refreshMutation.isPending ? "Registrando precios…" : "Registrar precios de hoy"}
+              </span>
+            </Button>
+            <p id="refresh-prices-help" className="text-xs text-ink-muted">
+              Añade una entrada por activo con el precio actual. Las entradas existentes no cambian.
+            </p>
+          </div>
         </div>
         {refreshMutation.isError && (
           <p role="alert" className="mt-2 text-sm text-accent">
-            {getApiErrorMessage(refreshMutation.error) ?? "No se pudieron actualizar los precios."}
+            {getApiErrorMessage(refreshMutation.error) ?? "No se pudieron registrar los precios."}
           </p>
         )}
         {refreshMutation.isSuccess && (
-          <p className="mt-2 text-sm text-brand">
+          <p role="status" className="mt-2 text-sm text-brand">
             {refreshMutation.data.updated.length === 0 && refreshMutation.data.skipped.length === 0
-              ? "Este portfolio no tiene activos que actualizar."
-              : `Precios actualizados para ${refreshMutation.data.updated.length} activo(s).`}
+              ? "Este portfolio no tiene activos que registrar."
+              : `Añadidas ${refreshMutation.data.updated.length} entrada(s) con el precio de ${formatRecordedAt(refreshMutation.data.refreshedAt)}.`}
             {refreshMutation.data.skipped.length > 0 &&
-              ` ${refreshMutation.data.skipped.length} omitido(s) (sin id de CoinGecko o sin precio disponible).`}
+              ` Sin precio disponible: ${refreshMutation.data.skipped.map((s) => s.symbol).join(", ")}.`}
           </p>
         )}
       </div>
@@ -283,7 +318,7 @@ export default function PortfolioDetailPage({
                         <span className="tabular">
                           {formatQuantity(entry.quantity)} × {formatCurrency(entry.pricePerUnit)}
                         </span>{" "}
-                        <span className="whitespace-nowrap">· {formatDate(entry.recordedAt)}</span>
+                        <span className="whitespace-nowrap">· {formatRecordedAt(entry.recordedAt)}</span>
                       </span>
                       <span className="shrink-0">
                         <RowActions
@@ -353,7 +388,7 @@ export default function PortfolioDetailPage({
                         {formatCurrency(entry.quantity * entry.pricePerUnit)}
                       </td>
                       <td className="px-4 py-2.5 text-ink-muted">
-                        {formatDate(entry.recordedAt)}
+                        {formatRecordedAt(entry.recordedAt)}
                       </td>
                       <td className="px-4 py-2.5 text-right">
                         <RowActions
@@ -465,11 +500,26 @@ export default function PortfolioDetailPage({
             {formError}
           </p>
         )}
-        {createMutation.isError && (
-          <p role="alert" className="border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent">
-            {getApiErrorMessage(createMutation.error) ?? "No se pudo añadir la entrada."}
-          </p>
-        )}
+        {createMutation.isError &&
+          (createDuplicateId !== null ? (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent"
+            >
+              <span>
+                Ya hay una entrada de {cryptoById.get(Number(cryptoCurrencyId))?.symbol ?? "este activo"} en{" "}
+                {exchangeById.get(Number(exchangeId))?.name ?? "este exchange"} el{" "}
+                {formatDate(`${recordedAt}T00:00:00Z`)}. Edítala en lugar de añadir otra.
+              </span>
+              <Button variant="ghost" onClick={() => openExistingEntry(createDuplicateId)}>
+                Editar la existente
+              </Button>
+            </div>
+          ) : (
+            <p role="alert" className="border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent">
+              {getApiErrorMessage(createMutation.error) ?? "No se pudo añadir la entrada."}
+            </p>
+          ))}
         {justAdded && !createMutation.isError && (
           <p className="border-t border-rule bg-brand-soft px-4 py-2 text-sm text-brand">
             Entrada añadida correctamente.
@@ -525,11 +575,24 @@ function useEntryEditor(entry: PortfolioEntryResponse, portfolioId: number, onDo
         exchangeId: Number(exchangeId),
         quantity: Number(quantity),
         pricePerUnit: Number(pricePerUnit),
-        recordedAt: new Date(recordedAt).toISOString(),
+        // The date input only holds a day. If it wasn't changed, keep the
+        // original timestamp: rewriting a timed entry (e.g. one from "Registrar
+        // precios de hoy") to 00:00 would reorder it, or clash with a hand-typed
+        // entry for the same day.
+        recordedAt:
+          recordedAt === entry.recordedAt.slice(0, 10)
+            ? entry.recordedAt
+            : new Date(recordedAt).toISOString(),
       },
       { onSuccess: onDone }
     );
   }
+
+  const errorMessage = !updateMutation.isError
+    ? null
+    : duplicateEntryId(updateMutation.error) !== null
+      ? "Ya hay otra entrada de ese activo en ese exchange con esa fecha. Cambia la fecha o edita la otra."
+      : (getApiErrorMessage(updateMutation.error) ?? "No se pudo guardar la entrada.");
 
   return {
     cryptoCurrencyId, setCryptoCurrencyId,
@@ -538,6 +601,7 @@ function useEntryEditor(entry: PortfolioEntryResponse, portfolioId: number, onDo
     pricePerUnit, setPricePerUnit,
     recordedAt, setRecordedAt,
     saving: updateMutation.isPending,
+    errorMessage,
     handleSave,
   };
 }
@@ -608,6 +672,11 @@ function EditEntryCard({ entry, portfolioId, cryptoCurrencies, exchanges, onDone
           </span>
         </div>
       </div>
+      {editor.errorMessage && (
+        <p role="alert" className="rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent">
+          {editor.errorMessage}
+        </p>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="ghost" onClick={onDone}>
           Cancelar
@@ -628,6 +697,7 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
     pricePerUnit, setPricePerUnit,
     recordedAt, setRecordedAt,
     saving,
+    errorMessage,
     handleSave,
   } = useEntryEditor(entry, portfolioId, onDone);
 
@@ -635,7 +705,8 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
     "w-full rounded-lg border border-rule bg-paper px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-brand";
 
   return (
-    <tr className="border-b border-rule bg-paper-raised last:border-0">
+    <>
+    <tr className={`bg-paper-raised ${errorMessage ? "" : "border-b border-rule last:border-0"}`}>
       <td className="px-4 py-2">
         <select
           value={cryptoCurrencyId}
@@ -702,5 +773,15 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
         </span>
       </td>
     </tr>
+    {errorMessage && (
+      <tr className="border-b border-rule bg-paper-raised last:border-0">
+        <td colSpan={7} className="px-4 pb-2">
+          <p role="alert" className="rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent">
+            {errorMessage}
+          </p>
+        </td>
+      </tr>
+    )}
+    </>
   );
 }

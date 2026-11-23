@@ -1,3 +1,4 @@
+using System.Reflection;
 using Application.Common.Security;
 using Application.CryptoCurrencies.Interfaces;
 using Application.Exchanges.Interfaces;
@@ -5,7 +6,9 @@ using Application.PortfolioEntries.Command;
 using Application.PortfolioEntries.Interfaces;
 using Application.Portfolios.Interfaces;
 using Contracts.PortfolioEntries;
+using Domain.Common;
 using Domain.Entities;
+using ErrorOr;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -71,6 +74,60 @@ public class UpdatePortfolioEntryCommandHandlerTests
         entry.ExchangeId.Should().Be(ExchangeId);
         _portfolioEntryRepository.Received(1).Update(entry);
     }
+
+    [Fact]
+    public async Task Handle_MovingEntryOntoAnotherAtSameMoment_ReturnsConflictWithoutUpdating()
+    {
+        var request = CreateRequest();
+        var entry = PortfolioEntry.Create(PortfolioId, 1, 1, quantity: 1m, pricePerUnit: 50m, DateTime.UtcNow.AddDays(-1));
+        _portfolioEntryRepository.GetByIdAsync(EntryId, Arg.Any<CancellationToken>()).Returns(entry);
+        _portfolioRepository.GetByIdAsync(PortfolioId, Arg.Any<CancellationToken>())
+            .Returns(Portfolio.Create(UserId, "My Portfolio", string.Empty));
+        _cryptoCurrencyRepository.GetByIdAsync(CryptoCurrencyId, Arg.Any<CancellationToken>())
+            .Returns(CryptoCurrency.Create("ETH", "Ethereum", "ethereum"));
+        _exchangeRepository.GetByIdAsync(ExchangeId, Arg.Any<CancellationToken>())
+            .Returns(Exchange.Create("Kraken", "api-key"));
+        var other = PortfolioEntry.Create(PortfolioId, CryptoCurrencyId, ExchangeId, 2m, 10m, request.RecordedAt);
+        SetId(other, 88);
+        _portfolioEntryRepository
+            .FindDuplicateAsync(PortfolioId, CryptoCurrencyId, ExchangeId, request.RecordedAt, EntryId, Arg.Any<CancellationToken>())
+            .Returns(other);
+
+        var result = await CreateHandler().Handle(new UpdatePortfolioEntryCommand(EntryId, request), CancellationToken.None);
+
+        result.IsError.Should().BeTrue();
+        result.FirstError.Type.Should().Be(ErrorType.Conflict);
+        result.FirstError.Code.Should().Be("PortfolioEntry.Duplicate");
+        result.FirstError.Metadata.Should().ContainKey("existingEntryId").WhoseValue.Should().Be(88L);
+        _portfolioEntryRepository.DidNotReceive().Update(Arg.Any<PortfolioEntry>());
+        entry.CryptoCurrencyId.Should().Be(1, "a refused edit must not leave the tracked entity modified");
+    }
+
+    [Fact]
+    public async Task Handle_LooksForDuplicatesExcludingTheEntryBeingEdited()
+    {
+        // Saving an entry unchanged must not collide with itself.
+        var request = CreateRequest();
+        var entry = PortfolioEntry.Create(PortfolioId, CryptoCurrencyId, ExchangeId, 1m, 50m, request.RecordedAt);
+        _portfolioEntryRepository.GetByIdAsync(EntryId, Arg.Any<CancellationToken>()).Returns(entry);
+        _portfolioRepository.GetByIdAsync(PortfolioId, Arg.Any<CancellationToken>())
+            .Returns(Portfolio.Create(UserId, "My Portfolio", string.Empty));
+        _cryptoCurrencyRepository.GetByIdAsync(CryptoCurrencyId, Arg.Any<CancellationToken>())
+            .Returns(CryptoCurrency.Create("ETH", "Ethereum", "ethereum"));
+        _exchangeRepository.GetByIdAsync(ExchangeId, Arg.Any<CancellationToken>())
+            .Returns(Exchange.Create("Kraken", "api-key"));
+
+        var result = await CreateHandler().Handle(new UpdatePortfolioEntryCommand(EntryId, request), CancellationToken.None);
+
+        result.IsError.Should().BeFalse();
+        await _portfolioEntryRepository.Received(1).FindDuplicateAsync(
+            PortfolioId, CryptoCurrencyId, ExchangeId, request.RecordedAt, EntryId, Arg.Any<CancellationToken>());
+        _portfolioEntryRepository.Received(1).Update(entry);
+    }
+
+    private static void SetId(Entity entity, long id) =>
+        typeof(Entity).GetProperty(nameof(Entity.Id), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(entity, id);
 
     [Fact]
     public async Task Handle_WithNonExistentEntry_ReturnsNotFoundWithoutCheckingPortfolio()
