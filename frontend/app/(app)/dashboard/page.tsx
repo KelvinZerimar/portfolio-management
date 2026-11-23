@@ -156,7 +156,10 @@ export default function DashboardPage() {
 
       <AlertsStrip holdings={holdings} />
 
-      <div className="grid gap-6 md:grid-cols-[7fr_3fr]">
+      {/* Side by side only from xl: with the md+ sidebar, the 3fr column is
+          ~144px at 768 and ~210px at 1024, narrower than the donut plus its
+          value legend (~290px), so the panel overflowed the page. Stacked below. */}
+      <div className="grid gap-6 xl:grid-cols-[7fr_3fr]">
         {historyError ? (
           <div className="panel p-1">
             <ErrorNotice>
@@ -204,7 +207,7 @@ function DashboardSkeleton() {
   return (
     <div className="mx-auto flex max-w-6xl animate-pulse flex-col gap-6" aria-busy="true">
       <div className="h-16 w-64 rounded-2xl bg-paper-raised" />
-      <div className="grid gap-6 md:grid-cols-[7fr_3fr]">
+      <div className="grid gap-6 xl:grid-cols-[7fr_3fr]">
         <div className="h-56 rounded-2xl bg-paper-raised" />
         <div className="h-56 rounded-2xl bg-paper-raised" />
       </div>
