@@ -146,7 +146,10 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                     <button
                       type="button"
                       onClick={() => toggleSort(col.key)}
-                      className="inline-flex items-center gap-1 hover:text-ink"
+                      // Chrome's UA sheet gives <button> text-transform: none, so
+                      // the row's `uppercase` never reached these three labels
+                      // ("Activo" next to "CANTIDAD"). Re-apply it on the button.
+                      className="inline-flex items-center gap-1 uppercase hover:text-ink"
                       aria-label={`Ordenar por ${col.label}`}
                     >
                       {col.label}
