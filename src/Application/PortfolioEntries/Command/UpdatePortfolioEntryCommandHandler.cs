@@ -50,6 +50,19 @@ public sealed class UpdatePortfolioEntryCommandHandler(
             return Error.NotFound("Exchange.NotFound", $"Exchange with ID '{request.ExchangeId}' was not found.");
         }
 
+        // Checked before touching the tracked entity, so a refused edit leaves it as loaded.
+        var duplicate = await portfolioEntryRepository.FindDuplicateAsync(
+            entry.PortfolioId,
+            request.CryptoCurrencyId,
+            request.ExchangeId,
+            request.RecordedAt,
+            excludingEntryId: command.Id,
+            cancellationToken);
+        if (duplicate is not null)
+        {
+            return PortfolioEntryErrors.Duplicate(duplicate.Id);
+        }
+
         entry.CryptoCurrencyId = request.CryptoCurrencyId;
         entry.ExchangeId = request.ExchangeId;
         entry.Quantity = request.Quantity;

@@ -46,6 +46,18 @@ public sealed class CreatePortfolioEntryCommandHandler(
             return Error.NotFound("Exchange.NotFound", $"Exchange with ID '{request.ExchangeId}' was not found.");
         }
 
+        var duplicate = await portfolioEntryRepository.FindDuplicateAsync(
+            request.PortfolioId,
+            request.CryptoCurrencyId,
+            request.ExchangeId,
+            request.RecordedAt,
+            excludingEntryId: null,
+            cancellationToken);
+        if (duplicate is not null)
+        {
+            return PortfolioEntryErrors.Duplicate(duplicate.Id);
+        }
+
         var newEntry = PortfolioEntry.Create(
             request.PortfolioId,
             request.CryptoCurrencyId,

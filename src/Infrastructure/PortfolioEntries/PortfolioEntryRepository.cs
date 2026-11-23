@@ -22,6 +22,23 @@ internal sealed class PortfolioEntryRepository(AppDbContext dbContext) : Reposit
             .Where(e => e.PortfolioId == portfolioId)
             .ToListAsync(cancellationToken);
 
+    public Task<PortfolioEntry?> FindDuplicateAsync(
+        long portfolioId,
+        long cryptoCurrencyId,
+        long exchangeId,
+        DateTime recordedAt,
+        long? excludingEntryId,
+        CancellationToken cancellationToken)
+        => dbContext.Set<PortfolioEntry>()
+            .AsNoTracking()
+            .Where(e => e.PortfolioId == portfolioId
+                && e.CryptoCurrencyId == cryptoCurrencyId
+                && e.ExchangeId == exchangeId
+                && e.RecordedAt == recordedAt)
+            .Where(e => !excludingEntryId.HasValue || e.Id != excludingEntryId.Value)
+            .OrderByDescending(e => e.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<PaginatorResponse<PortfolioEntry>> GetPagedAsync(
         long portfolioId,
         int page,
