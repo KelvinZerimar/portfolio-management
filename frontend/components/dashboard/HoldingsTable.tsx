@@ -142,7 +142,7 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
             <thead>
               <tr className="border-b border-rule-strong text-left text-xs tracking-wide text-ink-muted uppercase">
                 {SORT_COLUMNS.map((col) => (
-                  <th key={col.key} scope="col" className="px-4 py-2 font-medium">
+                  <th key={col.key} scope="col" className="px-3 py-2 font-medium">
                     <button
                       type="button"
                       onClick={() => toggleSort(col.key)}
@@ -159,13 +159,13 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                     </button>
                   </th>
                 ))}
-                <th scope="col" className="px-4 py-2 text-right font-medium">
+                <th scope="col" className="px-3 py-2 text-right font-medium">
                   Cantidad
                 </th>
-                <th scope="col" className="px-4 py-2 text-right font-medium">
+                <th scope="col" className="px-3 py-2 text-right font-medium">
                   Precio
                 </th>
-                <th scope="col" className="px-4 py-2 text-right font-medium">
+                <th scope="col" className="px-3 py-2 text-right font-medium">
                   Registrado
                 </th>
               </tr>
@@ -183,22 +183,27 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                     key={`${h.cryptoCurrencyId}-${h.exchangeId}`}
                     className="border-b border-rule last:border-0 hover:bg-paper-raised"
                   >
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
+                    {/* nowrap on the name and the date: at 1024px "Binance Coin" and
+                        "20 nov 2026" broke onto two lines and every row grew from
+                        41 to 61px. Cells use px-3 (not px-4) so the unwrapped row
+                        still fits the 736px panel at 1024px; a longer name falls
+                        back to the table's own horizontal scroll. */}
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
                         <AssetAvatar holding={h} />
                         <span className="font-medium">{h.cryptoCurrencySymbol}</span>{" "}
                         <span className="text-ink-muted">{h.cryptoCurrencyName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-ink-muted">{h.exchangeName}</td>
-                    <td className="tabular px-4 py-2.5 text-right">{formatCurrency(h.value)}</td>
-                    <td className="tabular px-4 py-2.5 text-right text-ink-muted">
+                    <td className="px-3 py-2.5 text-ink-muted">{h.exchangeName}</td>
+                    <td className="tabular px-3 py-2.5 text-right">{formatCurrency(h.value)}</td>
+                    <td className="tabular px-3 py-2.5 text-right text-ink-muted">
                       {formatQuantity(h.quantity)}
                     </td>
-                    <td className="tabular px-4 py-2.5 text-right text-ink-muted">
+                    <td className="tabular px-3 py-2.5 text-right text-ink-muted">
                       {formatCurrency(h.pricePerUnit)}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-ink-muted">
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap text-ink-muted">
                       {formatDate(h.recordedAt)}
                     </td>
                   </tr>
