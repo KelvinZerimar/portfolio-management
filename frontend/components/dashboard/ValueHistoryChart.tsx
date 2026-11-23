@@ -55,6 +55,9 @@ export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: Val
 
   // Multiple lines only earn their place once there's more than one asset to tell
   // apart — a single asset's line is identical to the total and would just double it.
+  // With per-asset lines, the total is not drawn: it dwarfed them and squashed
+  // their scale, and the headline figure already owns it. It lives in the
+  // tooltip instead. With one asset, the total line is the only line.
   const showAssetLines = rankedAssets.length > 1;
 
   const merged = useMemo<MergedPoint[]>(() => {
@@ -148,8 +151,14 @@ export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: Val
                     <div className="panel px-3 py-2.5 text-xs">
                       <p className="mb-1 text-ink-muted">{formatDate(row.date)}</p>
                       <ul className="space-y-0.5">
+                        {/* No swatch: the total has no line of its own when the
+                            asset lines are shown. A blank spacer keeps the
+                            figures aligned with the rows below. */}
                         <li className="flex items-center gap-2 font-semibold">
-                          <span aria-hidden className="h-0.5 w-2.5 shrink-0 bg-ink" />
+                          <span
+                            aria-hidden
+                            className={`h-0.5 w-2.5 shrink-0 ${showAssetLines ? "" : "bg-ink"}`}
+                          />
                           <span className="flex-1">Total</span>
                           <span className="tabular">{formatCurrency(row.value)}</span>
                         </li>
@@ -169,15 +178,17 @@ export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: Val
                   );
                 }}
               />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="var(--ink)"
-                strokeWidth={1.5}
-                dot={false}
-                activeDot={{ r: 3, fill: "var(--ink)", stroke: "none" }}
-                isAnimationActive={false}
-              />
+              {!showAssetLines && (
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="var(--ink)"
+                  strokeWidth={1.5}
+                  dot={false}
+                  activeDot={{ r: 3, fill: "var(--ink)", stroke: "none" }}
+                  isAnimationActive={false}
+                />
+              )}
               {legend.map((entry) => (
                 <Line
                   key={entry.symbol}
@@ -202,10 +213,6 @@ export function ValueHistoryChart({ points, byAsset, range, onRangeChange }: Val
 
       {legend.length > 0 && (
         <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-rule pt-2.5 text-xs text-ink-muted">
-          <li className="flex items-center gap-1.5">
-            <span aria-hidden className="h-0.5 w-2.5 shrink-0 bg-ink" />
-            Total
-          </li>
           {legend.map((entry) => (
             <li key={entry.symbol} className="flex items-center gap-1.5">
               <span aria-hidden className="h-0.5 w-2.5 shrink-0" style={{ background: entry.color }} />
