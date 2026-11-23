@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpDown, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import { formatCurrency, formatDate, formatQuantity } from "@/lib/format";
 import { colorForKey } from "@/lib/chartColors";
 import { exportHoldingsToCsv, exportHoldingsToExcel } from "@/lib/exportHoldings";
@@ -10,10 +10,13 @@ import type { PortfolioHoldingItemResponse } from "@/types";
 type SortKey = "asset" | "exchange" | "value";
 type SortDirection = "asc" | "desc";
 
-const SORT_COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "asset", label: "Activo" },
-  { key: "exchange", label: "Exchange" },
-  { key: "value", label: "Valor" },
+// `firstDirection` is what a first click on a new column sorts by: names read
+// A→Z, money reads largest first. (A single "desc" for every column used to
+// open Activo and Exchange at Z→A.)
+const SORT_COLUMNS: { key: SortKey; label: string; firstDirection: SortDirection }[] = [
+  { key: "asset", label: "Activo", firstDirection: "asc" },
+  { key: "exchange", label: "Exchange", firstDirection: "asc" },
+  { key: "value", label: "Valor", firstDirection: "desc" },
 ];
 
 interface HoldingsTableProps {
@@ -50,12 +53,12 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     });
   }, [holdings, query, sortKey, sortDirection]);
 
-  function toggleSort(key: SortKey) {
+  function toggleSort(key: SortKey, firstDirection: SortDirection) {
     if (key === sortKey) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDirection("desc");
+      setSortDirection(firstDirection);
     }
   }
 
@@ -141,27 +144,41 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-rule-strong text-left text-xs tracking-wide text-ink-muted uppercase">
-                {SORT_COLUMNS.map((col) => (
-                  <th key={col.key} scope="col" className="px-3 py-2 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort(col.key)}
-                      // Chrome's UA sheet gives <button> text-transform: none, so
-                      // the row's `uppercase` never reached these three labels
-                      // ("Activo" next to "CANTIDAD"). Re-apply it on the button.
-                      className="inline-flex items-center gap-1 uppercase hover:text-ink"
-                      aria-label={`Ordenar por ${col.label}`}
+                {SORT_COLUMNS.map((col) => {
+                  // The active column says which way it sorts: aria-sort for
+                  // screen readers, ↑/↓ and full-ink label for sight. Inactive
+                  // columns keep the faint ↕ as a "sortable" hint. The button is
+                  // named by the column title alone (WAI-ARIA sortable-table
+                  // pattern): an aria-label like "Ordenar por Activo" also became
+                  // the column header's name, read before every cell.
+                  const active = sortKey === col.key;
+                  const SortIcon = !active ? ArrowUpDown : sortDirection === "asc" ? ArrowUp : ArrowDown;
+                  return (
+                    <th
+                      key={col.key}
+                      scope="col"
+                      aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                      className="px-3 py-2 font-medium"
                     >
-                      {col.label}
-                      <ArrowUpDown
-                        size={12}
-                        strokeWidth={1.75}
-                        aria-hidden
-                        className={sortKey === col.key ? "opacity-100" : "opacity-30"}
-                      />
-                    </button>
-                  </th>
-                ))}
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.key, col.firstDirection)}
+                        // Chrome's UA sheet gives <button> text-transform: none, so
+                        // the row's `uppercase` never reached these three labels
+                        // ("Activo" next to "CANTIDAD"). Re-apply it on the button.
+                        className={`inline-flex items-center gap-1 uppercase hover:text-ink ${active ? "text-ink" : ""}`}
+                      >
+                        {col.label}
+                        <SortIcon
+                          size={12}
+                          strokeWidth={1.75}
+                          aria-hidden
+                          className={active ? "opacity-100" : "opacity-30"}
+                        />
+                      </button>
+                    </th>
+                  );
+                })}
                 <th scope="col" className="px-3 py-2 text-right font-medium">
                   Cantidad
                 </th>
