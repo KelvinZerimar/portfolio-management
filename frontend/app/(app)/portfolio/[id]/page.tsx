@@ -22,10 +22,30 @@ import { SelectField } from "@/components/ui/SelectField";
 import { TextField } from "@/components/ui/TextField";
 import { formatCurrency, formatDate, formatQuantity, formatRecordedAt } from "@/lib/format";
 import { getApiError, getApiErrorMessage } from "@/lib/errors";
+import { assetOptionLabel, groupAssetsForSelect, sortAssetsForSelect } from "@/lib/assetLabels";
 import type { CryptoCurrencyResponse, ExchangeResponse, PortfolioEntryResponse } from "@/types";
 
 function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+// Options for every asset picker on the page: coins, then funds, each sorted by
+// the label shown (ticker · name for coins, name (ISIN) for funds).
+function AssetOptions({ assets }: { assets: CryptoCurrencyResponse[] }) {
+  const { coins, funds } = groupAssetsForSelect(assets);
+  const render = (list: CryptoCurrencyResponse[]) =>
+    list.map((c) => (
+      <option key={c.id} value={c.id}>
+        {assetOptionLabel(c)}
+      </option>
+    ));
+  if (funds.length === 0) return <>{render(coins)}</>;
+  return (
+    <>
+      <optgroup label="Criptomonedas">{render(coins)}</optgroup>
+      <optgroup label="Fondos">{render(funds)}</optgroup>
+    </>
+  );
 }
 
 interface EntryFields {
@@ -119,6 +139,9 @@ export default function PortfolioDetailPage({
     [cryptoCurrencies]
   );
   const exchangeById = useMemo(() => new Map(exchanges.map((e) => [e.id, e])), [exchanges]);
+  // Every asset picker on this page (filter, add, edit) lists the same sorted,
+  // named options.
+  const assetOptions = useMemo(() => sortAssetsForSelect(cryptoCurrencies), [cryptoCurrencies]);
 
   const createMutation = useCreatePortfolioEntry();
   const deleteMutation = useDeletePortfolioEntry(portfolioId);
@@ -253,14 +276,10 @@ export default function PortfolioDetailPage({
             name="filterCryptoCurrencyId"
             value={filterCryptoCurrencyId}
             onChange={(e) => updateFilters({ cryptoCurrencyId: e.target.value })}
-            className="w-28"
+            className="w-56 max-w-full"
           >
             <option value="">Todos</option>
-            {cryptoCurrencies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.symbol}
-              </option>
-            ))}
+            <AssetOptions assets={assetOptions} />
           </SelectField>
           <TextField
             label="Desde"
@@ -319,7 +338,7 @@ export default function PortfolioDetailPage({
                     key={entry.id}
                     entry={entry}
                     portfolioId={portfolioId}
-                    cryptoCurrencies={cryptoCurrencies}
+                    cryptoCurrencies={assetOptions}
                     exchanges={exchanges}
                     onDone={() => setEditingId(null)}
                   />
@@ -383,7 +402,7 @@ export default function PortfolioDetailPage({
                       key={entry.id}
                       entry={entry}
                       portfolioId={portfolioId}
-                      cryptoCurrencies={cryptoCurrencies}
+                      cryptoCurrencies={assetOptions}
                       exchanges={exchanges}
                       onDone={() => setEditingId(null)}
                     />
@@ -451,16 +470,14 @@ export default function PortfolioDetailPage({
               value={cryptoCurrencyId}
               onChange={(e) => setCryptoCurrencyId(e.target.value)}
               required
-              className="w-28"
+              // 160px keeps the add form on one row at 1440px; the open list
+              // shows full names, and a coin's ticker leads its label.
+              className="w-40 max-w-full"
             >
               <option value="" disabled>
                 —
               </option>
-              {cryptoCurrencies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.symbol}
-                </option>
-              ))}
+              <AssetOptions assets={assetOptions} />
             </SelectField>
             <SelectField
               label="Exchange"
@@ -648,11 +665,7 @@ function EditEntryCard({ entry, portfolioId, cryptoCurrencies, exchanges, onDone
           value={editor.cryptoCurrencyId}
           onChange={(e) => editor.setCryptoCurrencyId(e.target.value)}
         >
-          {cryptoCurrencies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.symbol}
-            </option>
-          ))}
+          <AssetOptions assets={cryptoCurrencies} />
         </SelectField>
         <SelectField
           label="Exchange"
@@ -763,11 +776,7 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
           onChange={(e) => setCryptoCurrencyId(e.target.value)}
           className={inputClassName}
         >
-          {cryptoCurrencies.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.symbol}
-            </option>
-          ))}
+          <AssetOptions assets={cryptoCurrencies} />
         </select>
       </td>
       <td className="px-4 py-2">
