@@ -1,12 +1,12 @@
 "use client";
 
-import { type FormEvent, use, useMemo, useState } from "react";
+import { type FormEvent, use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Check, RefreshCw, X } from "lucide-react";
 import { useCryptoCurrencies } from "@/hooks/useCryptoCurrencies";
 import { useExchanges } from "@/hooks/useExchanges";
 import { usePortfolio } from "@/hooks/usePortfolios";
-import { useRefreshPortfolioPrices } from "@/hooks/usePortfolioAnalytics";
+import { usePortfolioValue, useRefreshPortfolioPrices } from "@/hooks/usePortfolioAnalytics";
 import {
   useCreatePortfolioEntry,
   useDeletePortfolioEntry,
@@ -25,8 +25,12 @@ import { getApiError, getApiErrorMessage } from "@/lib/errors";
 import { assetOptionLabel, groupAssetsForSelect, sortAssetsForSelect } from "@/lib/assetLabels";
 import type { CryptoCurrencyResponse, ExchangeResponse, PortfolioEntryResponse } from "@/types";
 
+// Today in the user's own calendar. It used the UTC date: just after midnight
+// in Madrid it still gave yesterday, so today's date was rejected as "future".
 function todayInputValue() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
 }
 
 // Options for every asset picker on the page: coins, then funds, each sorted by
@@ -155,6 +159,15 @@ export default function PortfolioDetailPage({
   const [recordedAt, setRecordedAt] = useState(todayInputValue());
   const [formError, setFormError] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState(false);
+  const { data: portfolioValue, isError: valueError } = usePortfolioValue(portfolioId);
+
+  // The confirmation used to stay until the next submit, long after it meant
+  // anything. The new row in the ledger is the lasting proof.
+  useEffect(() => {
+    if (!justAdded) return;
+    const timer = setTimeout(() => setJustAdded(false), 5000);
+    return () => clearTimeout(timer);
+  }, [justAdded]);
 
   const createDuplicateId = createMutation.isError ? duplicateEntryId(createMutation.error) : null;
 
@@ -230,6 +243,15 @@ export default function PortfolioDetailPage({
             {portfolio?.description && (
               <p className="text-sm text-ink-muted">{portfolio.description}</p>
             )}
+            {portfolioValue && !valueError && (
+              <p className="mt-2 text-sm text-ink-muted">
+                Valor actual{" "}
+                <span className="tabular text-lg font-semibold text-ink">
+                  {formatCurrency(portfolioValue.value)}
+                </span>{" "}
+                · según la última entrada de cada activo
+              </p>
+            )}
           </div>
           {/* This writes to the ledger: one new entry per held asset at the
               current CoinGecko price, stamped with the time it ran. It used to
@@ -269,7 +291,138 @@ export default function PortfolioDetailPage({
         )}
       </div>
 
-      <section className="panel overflow-hidden">
+      {/* Adding an entry is the page's main task. The form sat under the
+          ledger and its pagination: with 50 rows a page, reaching it meant
+          scrolling to the very end. */}
+      <section aria-labelledby="add-entry-heading" className="panel overflow-hidden">
+        <h2 id="add-entry-heading" className="px-4 pt-3 text-sm font-semibold">Añadir entrada</h2>
+        {canAddEntry ? (
+          <form
+            onSubmit={handleCreate}
+            className="flex flex-wrap items-end gap-3 px-4 pt-2 pb-3"
+          >
+            <SelectField
+              label="Activo"
+              name="cryptoCurrencyId"
+              value={cryptoCurrencyId}
+              onChange={(e) => setCryptoCurrencyId(e.target.value)}
+              required
+              // 160px keeps the add form on one row at 1440px; the open list
+              // shows full names, and a coin's ticker leads its label.
+              className="w-40 max-w-full"
+            >
+              <option value="" disabled>
+                —
+              </option>
+              <AssetOptions assets={assetOptions} />
+            </SelectField>
+            <SelectField
+              label="Exchange"
+              name="exchangeId"
+              value={exchangeId}
+              onChange={(e) => setExchangeId(e.target.value)}
+              required
+              className="w-32"
+            >
+              <option value="" disabled>
+                —
+              </option>
+              {exchanges.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name}
+                </option>
+              ))}
+            </SelectField>
+            <TextField
+              label="Cantidad"
+              name="quantity"
+              type="number"
+              step="any"
+              min="0"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              required
+              className="w-28"
+            />
+            {/* Every price is stored in euros; the field now says so. */}
+            <TextField
+              label="Precio (€)"
+              name="pricePerUnit"
+              type="number"
+              step="any"
+              min="0"
+              value={pricePerUnit}
+              onChange={(e) => setPricePerUnit(e.target.value)}
+              required
+              className="w-28"
+            />
+            <TextField
+              label="Fecha"
+              name="recordedAt"
+              type="date"
+              value={recordedAt}
+              onChange={(e) => setRecordedAt(e.target.value)}
+              max={todayInputValue()}
+              required
+              className="w-36"
+            />
+            <Button type="submit" disabled={createMutation.isPending}>
+              {createMutation.isPending ? "Añadiendo…" : "Añadir entrada"}
+            </Button>
+          </form>
+        ) : null}
+        {formError && (
+          <p role="alert" className="border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent">
+            {formError}
+          </p>
+        )}
+        {createMutation.isError &&
+          (createDuplicateId !== null ? (
+            <div
+              role="alert"
+              className="flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent"
+            >
+              <span>
+                Ya hay una entrada de {cryptoById.get(Number(cryptoCurrencyId))?.symbol ?? "este activo"} en{" "}
+                {exchangeById.get(Number(exchangeId))?.name ?? "este exchange"} el{" "}
+                {formatDate(`${recordedAt}T00:00:00Z`)}. Edítala en lugar de añadir otra.
+              </span>
+              <Button variant="ghost" onClick={() => openExistingEntry(createDuplicateId)}>
+                Editar la existente
+              </Button>
+            </div>
+          ) : (
+            <p role="alert" className="border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent">
+              {getApiErrorMessage(createMutation.error) ?? "No se pudo añadir la entrada."}
+            </p>
+          ))}
+        {justAdded && !createMutation.isError && (
+          <p role="status" className="border-t border-rule bg-brand-soft px-4 py-2 text-sm text-brand">
+            Entrada añadida correctamente.
+          </p>
+        )}
+        {referenceDataFailed ? (
+          <ErrorNotice>
+            No se pudieron cargar las criptomonedas o exchanges disponibles.
+          </ErrorNotice>
+        ) : (
+          !canAddEntry && (
+            <p className="border-t border-rule px-4 py-3 text-sm text-ink-muted">
+              Necesitas al menos una{" "}
+              <Link href="/cryptocurrencies" className="underline">
+                criptomoneda
+              </Link>{" "}
+              y un{" "}
+              <Link href="/exchanges" className="underline">
+                exchange
+              </Link>{" "}
+              registrados antes de poder añadir una entrada.
+            </p>
+          )
+        )}
+      </section>
+
+      <section aria-label="Registro de entradas" className="panel overflow-hidden">
         <div className="flex flex-wrap items-end gap-3 border-b border-rule px-4 py-3">
           <SelectField
             label="Activo"
@@ -380,7 +533,7 @@ export default function PortfolioDetailPage({
                   <th className="px-4 py-2 font-medium">Activo</th>
                   <th className="px-4 py-2 font-medium">Exchange</th>
                   <th className="px-4 py-2 text-right font-medium">Cantidad</th>
-                  <th className="px-4 py-2 text-right font-medium">Precio</th>
+                  <th className="px-4 py-2 text-right font-medium">Precio (€)</th>
                   <th className="px-4 py-2 text-right font-medium">Valor</th>
                   <th className="px-4 py-2 font-medium">Fecha</th>
                   <th className="px-4 py-2 text-right font-medium">Acciones</th>
@@ -459,129 +612,6 @@ export default function PortfolioDetailPage({
           />
         )}
 
-        {canAddEntry ? (
-          <form
-            onSubmit={handleCreate}
-            className="flex flex-wrap items-end gap-3 border-t border-rule px-4 py-3"
-          >
-            <SelectField
-              label="Activo"
-              name="cryptoCurrencyId"
-              value={cryptoCurrencyId}
-              onChange={(e) => setCryptoCurrencyId(e.target.value)}
-              required
-              // 160px keeps the add form on one row at 1440px; the open list
-              // shows full names, and a coin's ticker leads its label.
-              className="w-40 max-w-full"
-            >
-              <option value="" disabled>
-                —
-              </option>
-              <AssetOptions assets={assetOptions} />
-            </SelectField>
-            <SelectField
-              label="Exchange"
-              name="exchangeId"
-              value={exchangeId}
-              onChange={(e) => setExchangeId(e.target.value)}
-              required
-              className="w-32"
-            >
-              <option value="" disabled>
-                —
-              </option>
-              {exchanges.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name}
-                </option>
-              ))}
-            </SelectField>
-            <TextField
-              label="Cantidad"
-              name="quantity"
-              type="number"
-              step="any"
-              min="0"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              required
-              className="w-28"
-            />
-            <TextField
-              label="Precio"
-              name="pricePerUnit"
-              type="number"
-              step="any"
-              min="0"
-              value={pricePerUnit}
-              onChange={(e) => setPricePerUnit(e.target.value)}
-              required
-              className="w-28"
-            />
-            <TextField
-              label="Fecha"
-              name="recordedAt"
-              type="date"
-              value={recordedAt}
-              onChange={(e) => setRecordedAt(e.target.value)}
-              max={todayInputValue()}
-              required
-              className="w-36"
-            />
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Añadiendo…" : "Añadir entrada"}
-            </Button>
-          </form>
-        ) : null}
-        {formError && (
-          <p role="alert" className="border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent">
-            {formError}
-          </p>
-        )}
-        {createMutation.isError &&
-          (createDuplicateId !== null ? (
-            <div
-              role="alert"
-              className="flex flex-wrap items-center justify-between gap-2 border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent"
-            >
-              <span>
-                Ya hay una entrada de {cryptoById.get(Number(cryptoCurrencyId))?.symbol ?? "este activo"} en{" "}
-                {exchangeById.get(Number(exchangeId))?.name ?? "este exchange"} el{" "}
-                {formatDate(`${recordedAt}T00:00:00Z`)}. Edítala en lugar de añadir otra.
-              </span>
-              <Button variant="ghost" onClick={() => openExistingEntry(createDuplicateId)}>
-                Editar la existente
-              </Button>
-            </div>
-          ) : (
-            <p role="alert" className="border-t border-rule bg-accent-soft px-4 py-2 text-sm text-accent">
-              {getApiErrorMessage(createMutation.error) ?? "No se pudo añadir la entrada."}
-            </p>
-          ))}
-        {justAdded && !createMutation.isError && (
-          <p className="border-t border-rule bg-brand-soft px-4 py-2 text-sm text-brand">
-            Entrada añadida correctamente.
-          </p>
-        )}
-        {referenceDataFailed ? (
-          <ErrorNotice>
-            No se pudieron cargar las criptomonedas o exchanges disponibles.
-          </ErrorNotice>
-        ) : (
-          !canAddEntry && (
-            <p className="border-t border-rule px-4 py-3 text-sm text-ink-muted">
-              Necesitas al menos una{" "}
-              <Link href="/cryptocurrencies" className="underline">
-                criptomoneda
-              </Link>{" "}
-              y un{" "}
-              <Link href="/exchanges" className="underline">
-                exchange
-              </Link>{" "}
-              registrados antes de poder añadir una entrada.
-            </p>
-          )
-        )}
       </section>
     </div>
   );
@@ -690,7 +720,7 @@ function EditEntryCard({ entry, portfolioId, cryptoCurrencies, exchanges, onDone
           className="tabular w-full text-right"
         />
         <TextField
-          label="Precio"
+          label="Precio (€)"
           id={`${idPrefix}-price`}
           type="number"
           step="any"
@@ -807,7 +837,7 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
       </td>
       <td className="px-4 py-2">
         <input
-          aria-label="Precio"
+          aria-label="Precio (€)"
           type="number"
           step="any"
           min="0"
