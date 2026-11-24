@@ -34,6 +34,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Portfolio: sin entradas empatadas, «Registrar precios de hoy» y hora visible](ftd/portfolio-refresh-and-entry-time.md)
 - [Portfolio: validación, nombres accesibles y teclado en la edición de entradas](ftd/portfolio-edit-row-validation.md)
 - [Portfolio: nombre del activo en los selectores](ftd/portfolio-asset-names.md)
+- [Portfolio: borrado con peso, alta arriba, valor visible, € y «hoy» local](ftd/portfolio-polish.md)
 
 ## sdd
 - [Constitution (draft)](sdd/constitution.md)
@@ -53,6 +54,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Agente MAF con tool-calling](sdd/analysis/maf-tool-calling-agent.md) — GATE: PASS (ejecución 4: 0 HIGH; 9 MEDIUM/LOW corregidos, 4 aceptados), 2026-11-11
 
 ### sdd/verifications
+- [portfolio-polish (FTD)](sdd/verifications/portfolio-polish-2026-11-24.md) — PASS (lint, tsc, build; P2 y P3 con datos reales), 2026-11-24
 - [portfolio-asset-names (FTD)](sdd/verifications/portfolio-asset-names-2026-11-24.md) — PASS (lint, tsc, build; selectores con datos reales), 2026-11-24
 - [portfolio-edit-row-validation (FTD)](sdd/verifications/portfolio-edit-row-validation-2026-11-24.md) — PASS (lint, tsc, build; validación y a11y observadas), 2026-11-24
 - [portfolio-refresh-and-entry-time (FTD)](sdd/verifications/portfolio-refresh-and-entry-time-2026-11-23.md) — PASS (264 + 46 tests, API real 409, lint, tsc, build), 2026-11-23
