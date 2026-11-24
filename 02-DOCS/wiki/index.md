@@ -32,6 +32,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Dashboard: sin recuadro negro al pulsar los gráficos](ftd/dashboard-chart-focus-ring.md)
 - [Portfolio: vista móvil (lista y detalle)](ftd/portfolio-mobile.md)
 - [Portfolio: sin entradas empatadas, «Registrar precios de hoy» y hora visible](ftd/portfolio-refresh-and-entry-time.md)
+- [Portfolio: validación, nombres accesibles y teclado en la edición de entradas](ftd/portfolio-edit-row-validation.md)
 
 ## sdd
 - [Constitution (draft)](sdd/constitution.md)
@@ -51,6 +52,7 @@ timestamp: 2026-11-11T12:00:00Z
 - [Agente MAF con tool-calling](sdd/analysis/maf-tool-calling-agent.md) — GATE: PASS (ejecución 4: 0 HIGH; 9 MEDIUM/LOW corregidos, 4 aceptados), 2026-11-11
 
 ### sdd/verifications
+- [portfolio-edit-row-validation (FTD)](sdd/verifications/portfolio-edit-row-validation-2026-11-24.md) — PASS (lint, tsc, build; validación y a11y observadas), 2026-11-24
 - [portfolio-refresh-and-entry-time (FTD)](sdd/verifications/portfolio-refresh-and-entry-time-2026-11-23.md) — PASS (264 + 46 tests, API real 409, lint, tsc, build), 2026-11-23
 - [portfolio-mobile (FTD)](sdd/verifications/portfolio-mobile-2026-11-23.md) — PASS (lint, tsc, build; 6 anchos), 2026-11-23
 - [dashboard-chart-focus-ring (FTD)](sdd/verifications/dashboard-chart-focus-ring-2026-11-23.md) — PASS (lint, tsc, build; foco por ratón y teclado), 2026-11-23

@@ -28,6 +28,31 @@ function todayInputValue() {
   return new Date().toISOString().slice(0, 10);
 }
 
+interface EntryFields {
+  cryptoCurrencyId: string;
+  exchangeId: string;
+  quantity: string;
+  pricePerUnit: string;
+  recordedAt: string;
+}
+
+// One set of rules for adding and for editing an entry. Editing used to skip
+// them: an empty field made "Guardar" do nothing, and a zero, negative or
+// future value went straight to the API.
+function entryFieldsError(fields: EntryFields, action: "añadir" | "guardar"): string | null {
+  const { cryptoCurrencyId, exchangeId, quantity, pricePerUnit, recordedAt } = fields;
+  if (!cryptoCurrencyId || !exchangeId || !quantity || !pricePerUnit || !recordedAt) {
+    return `Completa todos los campos para ${action} la entrada.`;
+  }
+  if (!(Number(quantity) > 0) || !(Number(pricePerUnit) > 0)) {
+    return "La cantidad y el precio deben ser mayores que cero.";
+  }
+  if (recordedAt > todayInputValue()) {
+    return "La fecha no puede ser futura.";
+  }
+  return null;
+}
+
 // The API refuses a second entry for the same asset + exchange at the same
 // moment (409 PortfolioEntry.Duplicate): the valuation keeps the latest one and
 // a tie would make the portfolio value arbitrary. Returns the existing entry's
@@ -125,16 +150,12 @@ export default function PortfolioDetailPage({
     e.preventDefault();
     setJustAdded(false);
 
-    if (!cryptoCurrencyId || !exchangeId || !quantity || !pricePerUnit || !recordedAt) {
-      setFormError("Completa todos los campos para añadir la entrada.");
-      return;
-    }
-    if (Number(quantity) <= 0 || Number(pricePerUnit) <= 0) {
-      setFormError("La cantidad y el precio deben ser mayores que cero.");
-      return;
-    }
-    if (recordedAt > todayInputValue()) {
-      setFormError("La fecha no puede ser futura.");
+    const fieldsError = entryFieldsError(
+      { cryptoCurrencyId, exchangeId, quantity, pricePerUnit, recordedAt },
+      "añadir"
+    );
+    if (fieldsError) {
+      setFormError(fieldsError);
       return;
     }
 
@@ -566,9 +587,15 @@ function useEntryEditor(entry: PortfolioEntryResponse, portfolioId: number, onDo
   const [pricePerUnit, setPricePerUnit] = useState(String(entry.pricePerUnit));
   const [recordedAt, setRecordedAt] = useState(entry.recordedAt.slice(0, 10));
   const updateMutation = useUpdatePortfolioEntry(entry.id, portfolioId);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   function handleSave() {
-    if (!cryptoCurrencyId || !exchangeId || !quantity || !pricePerUnit) return;
+    const fieldsError = entryFieldsError(
+      { cryptoCurrencyId, exchangeId, quantity, pricePerUnit, recordedAt },
+      "guardar"
+    );
+    setValidationError(fieldsError);
+    if (fieldsError) return;
     updateMutation.mutate(
       {
         cryptoCurrencyId: Number(cryptoCurrencyId),
@@ -588,11 +615,13 @@ function useEntryEditor(entry: PortfolioEntryResponse, portfolioId: number, onDo
     );
   }
 
-  const errorMessage = !updateMutation.isError
-    ? null
-    : duplicateEntryId(updateMutation.error) !== null
-      ? "Ya hay otra entrada de ese activo en ese exchange con esa fecha. Cambia la fecha o edita la otra."
-      : (getApiErrorMessage(updateMutation.error) ?? "No se pudo guardar la entrada.");
+  const errorMessage =
+    validationError ??
+    (!updateMutation.isError
+      ? null
+      : duplicateEntryId(updateMutation.error) !== null
+        ? "Ya hay otra entrada de ese activo en ese exchange con esa fecha. Cambia la fecha o edita la otra."
+        : (getApiErrorMessage(updateMutation.error) ?? "No se pudo guardar la entrada."));
 
   return {
     cryptoCurrencyId, setCryptoCurrencyId,
@@ -661,6 +690,7 @@ function EditEntryCard({ entry, portfolioId, cryptoCurrencies, exchanges, onDone
           label="Fecha"
           id={`${idPrefix}-date`}
           type="date"
+          max={todayInputValue()}
           value={editor.recordedAt}
           onChange={(e) => editor.setRecordedAt(e.target.value)}
           className="w-full"
@@ -704,11 +734,31 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
   const inputClassName =
     "w-full rounded-lg border border-rule bg-paper px-2 py-1 text-sm focus-visible:outline-2 focus-visible:outline-brand";
 
+  // Inside a table row the column header is the only visible label, which a
+  // screen reader does not read for a form control: each control was announced
+  // as a bare "combobox" / "spin button". Keyboard: Enter saves, Escape cancels.
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTableRowElement>) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onDone();
+    } else if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") {
+      e.preventDefault();
+      handleSave();
+    }
+  }
+
   return (
     <>
-    <tr className={`bg-paper-raised ${errorMessage ? "" : "border-b border-rule last:border-0"}`}>
+    <tr
+      onKeyDown={handleKeyDown}
+      className={`bg-paper-raised ${errorMessage ? "" : "border-b border-rule last:border-0"}`}
+    >
       <td className="px-4 py-2">
         <select
+          aria-label="Activo"
+          // Opening the editor puts the cursor in it, so keyboard users do not
+          // have to tab back through the whole table to reach the row.
+          autoFocus
           value={cryptoCurrencyId}
           onChange={(e) => setCryptoCurrencyId(e.target.value)}
           className={inputClassName}
@@ -722,6 +772,7 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
       </td>
       <td className="px-4 py-2">
         <select
+          aria-label="Exchange"
           value={exchangeId}
           onChange={(e) => setExchangeId(e.target.value)}
           className={inputClassName}
@@ -735,8 +786,11 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
       </td>
       <td className="px-4 py-2">
         <input
+          aria-label="Cantidad"
           type="number"
           step="any"
+          min="0"
+          inputMode="decimal"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
           className={`tabular text-right ${inputClassName}`}
@@ -744,8 +798,11 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
       </td>
       <td className="px-4 py-2">
         <input
+          aria-label="Precio"
           type="number"
           step="any"
+          min="0"
+          inputMode="decimal"
           value={pricePerUnit}
           onChange={(e) => setPricePerUnit(e.target.value)}
           className={`tabular text-right ${inputClassName}`}
@@ -756,7 +813,9 @@ function EditEntryRow({ entry, portfolioId, cryptoCurrencies, exchanges, onDone 
       </td>
       <td className="px-4 py-2">
         <input
+          aria-label="Fecha"
           type="date"
+          max={todayInputValue()}
           value={recordedAt}
           onChange={(e) => setRecordedAt(e.target.value)}
           className={inputClassName}
