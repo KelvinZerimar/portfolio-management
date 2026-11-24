@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { useLatestNotes } from "@/hooks/useNotes";
 import { ErrorNotice } from "@/components/ui/ErrorNotice";
-import { RichTextContent } from "@/components/ui/RichTextContent";
 import { formatDate } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
 
 // Mirrors HoldingsTable's panel shell, but as a simple list — ten items don't
 // need sorting/filtering/export the way a full holdings table does.
+// Deliberately shows only title, category and date, never the note body: notes
+// hold credentials and bank details, and the dashboard is the most-seen (and
+// most-screenshotted) page. The full content stays behind /notes.
+const MOBILE_NOTES = 3;
+
 export function LatestNotesWidget() {
   const { data, isPending, isError, error } = useLatestNotes(10);
   const notes = data ?? [];
@@ -36,15 +40,18 @@ export function LatestNotesWidget() {
         </p>
       ) : (
         <ul className="divide-y divide-rule">
-          {notes.map((note) => (
-            <li key={note.id} className="flex flex-col gap-1 px-6 py-3">
+          {notes.map((note, index) => (
+            // Three on phones: ten notes took about half the page height there.
+            <li
+              key={note.id}
+              className={`flex-col gap-1 px-6 py-3 ${index < MOBILE_NOTES ? "flex" : "hidden sm:flex"}`}
+            >
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{note.title}</span>
                 <span className="rounded-full bg-paper-raised px-2 py-0.5 text-[11px] font-medium text-ink-muted">
                   {note.category}
                 </span>
               </div>
-              <RichTextContent html={note.content} className="line-clamp-2 text-sm text-ink-muted" />
               <span className="text-xs text-ink-muted">{formatDate(note.createdAt)}</span>
             </li>
           ))}

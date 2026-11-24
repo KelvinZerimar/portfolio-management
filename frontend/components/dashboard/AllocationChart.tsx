@@ -8,8 +8,8 @@ import { usePortfolioAllocation } from "@/hooks/usePortfolioAnalytics";
 import { PortfolioAllocationGroupBy } from "@/types";
 import { formatCurrency, formatPercentage } from "@/lib/format";
 import { getApiErrorMessage } from "@/lib/errors";
-import { colorForKey } from "@/lib/chartColors";
-import { isEuroAsset, MAX_RANKED_ASSETS } from "@/lib/assetFilters";
+import { MAX_RANKED_ASSETS } from "@/lib/assetFilters";
+import { buildAllocationSlices } from "@/lib/allocationSlices";
 
 type GroupBy = "asset" | "exchange";
 
@@ -29,14 +29,17 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
     groupBy === "asset" ? PortfolioAllocationGroupBy.Asset : PortfolioAllocationGroupBy.Exchange
   );
 
-  // Top assets by value, Euro cash excluded (exchange grouping has no "Euro"
-  // concept, so it's only capped, not filtered), capped at MAX_RANKED_ASSETS —
-  // matching the summary cards and the value history chart.
-  const items = useMemo(() => {
-    const raw = data?.items ?? [];
-    const filtered = groupBy === "asset" ? raw.filter((item) => !isEuroAsset(item.label)) : raw;
-    return [...filtered].sort((a, b) => b.value - a.value).slice(0, MAX_RANKED_ASSETS);
-  }, [data, groupBy]);
+  // Top MAX_RANKED_ASSETS by value (same ranking as the history chart), plus
+  // "Otros" and — by asset only — "Efectivo", so the ring adds up to the total
+  // its percentage labels are measured against.
+  const items = useMemo(
+    () =>
+      buildAllocationSlices(data?.items ?? [], {
+        separateCash: groupBy === "asset",
+        max: MAX_RANKED_ASSETS,
+      }),
+    [data, groupBy]
+  );
 
   return (
     <section className="panel p-6" aria-label="Participación por activo o exchange">
@@ -61,7 +64,12 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
           Sin holdings todavía.
         </p>
       ) : (
-        <div className="mt-2 flex items-center gap-4">
+        // Donut on top, legend below as a value table: this panel replaced the
+        // per-asset summary cards (same top-N data shown a third time), so the
+        // legend now carries each group's value as well as its share — and
+        // stacking it fills the panel to the history chart's height instead of
+        // leaving the lower half empty.
+        <div className="mt-4 flex flex-col items-center gap-4">
           <div className="h-40 w-40 shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -71,13 +79,15 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
                   nameKey="label"
                   innerRadius={48}
                   outerRadius={70}
-                  paddingAngle={1}
-                  stroke="var(--paper)"
+                  // Gap and white stroke separate slices; with a single slice
+                  // there is nothing to separate and they cut a notch in the ring.
+                  paddingAngle={items.length > 1 ? 1 : 0}
+                  stroke={items.length > 1 ? "var(--paper)" : "none"}
                   strokeWidth={2}
                   isAnimationActive={false}
                 >
                   {items.map((item) => (
-                    <Cell key={item.groupId} fill={colorForKey(item.label)} />
+                    <Cell key={item.key} fill={item.color} />
                   ))}
                 </Pie>
                 <Tooltip
@@ -93,18 +103,26 @@ export function AllocationChart({ portfolioId }: AllocationChartProps) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <ul className="min-w-0 flex-1 space-y-1.5 text-sm">
+          <ul className="w-full max-w-sm divide-y divide-rule text-sm">
             {items.map((item) => (
-              <li key={item.groupId} className="flex items-center justify-between gap-2">
+              <li
+                key={item.key}
+                className="grid grid-cols-[minmax(0,1fr)_auto_4.5rem] items-center gap-x-3 py-1.5"
+              >
                 <span className="flex min-w-0 items-center gap-1.5">
                   <span
                     aria-hidden
                     className="size-2 shrink-0 rounded-full"
-                    style={{ background: colorForKey(item.label) }}
+                    style={{ background: item.color }}
                   />
-                  <span className="truncate">{item.label}</span>
+                  <span
+                    className={`truncate ${item.kind === "item" ? "font-medium" : "text-ink-muted"}`}
+                  >
+                    {item.label}
+                  </span>
                 </span>
-                <span className="tabular shrink-0 text-ink-muted">
+                <span className="tabular text-right">{formatCurrency(item.value)}</span>
+                <span className="tabular text-right text-ink-muted">
                   {formatPercentage(item.percentage)}
                 </span>
               </li>

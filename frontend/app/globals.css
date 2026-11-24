@@ -54,6 +54,14 @@ body {
   outline-offset: 2px;
 }
 
+/* Recharts 3's accessibility layer makes the chart <svg> (and the pie's sector
+   layer) focusable so arrow keys can walk the tooltip. A mouse click then
+   focuses it and Chrome paints its default black `outline: auto` box. Hide the
+   ring only for pointer focus; keyboard focus still gets the brand ring above. */
+.recharts-wrapper :focus:not(:focus-visible) {
+  outline: none;
+}
+
 * {
   scrollbar-color: var(--rule-strong) var(--page);
 }

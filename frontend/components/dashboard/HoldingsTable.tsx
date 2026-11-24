@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowUpDown, Download } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download } from "lucide-react";
 import { formatCurrency, formatDate, formatQuantity } from "@/lib/format";
 import { colorForKey } from "@/lib/chartColors";
 import { exportHoldingsToCsv, exportHoldingsToExcel } from "@/lib/exportHoldings";
@@ -10,10 +10,13 @@ import type { PortfolioHoldingItemResponse } from "@/types";
 type SortKey = "asset" | "exchange" | "value";
 type SortDirection = "asc" | "desc";
 
-const SORT_COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "asset", label: "Activo" },
-  { key: "exchange", label: "Exchange" },
-  { key: "value", label: "Valor" },
+// `firstDirection` is what a first click on a new column sorts by: names read
+// A→Z, money reads largest first. (A single "desc" for every column used to
+// open Activo and Exchange at Z→A.)
+const SORT_COLUMNS: { key: SortKey; label: string; firstDirection: SortDirection }[] = [
+  { key: "asset", label: "Activo", firstDirection: "asc" },
+  { key: "exchange", label: "Exchange", firstDirection: "asc" },
+  { key: "value", label: "Valor", firstDirection: "desc" },
 ];
 
 interface HoldingsTableProps {
@@ -50,12 +53,12 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     });
   }, [holdings, query, sortKey, sortDirection]);
 
-  function toggleSort(key: SortKey) {
+  function toggleSort(key: SortKey, firstDirection: SortDirection) {
     if (key === sortKey) {
       setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      setSortDirection("desc");
+      setSortDirection(firstDirection);
     }
   }
 
@@ -63,12 +66,24 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
     <section aria-label="Holdings actuales" className="panel overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule px-6 py-4">
         <h2 className="text-sm font-bold">Holdings</h2>
-        <div className="flex flex-wrap items-center gap-2">
+        {/* One row from sm up: the search used to be w-full inside a wrapping
+            flex row, so it always claimed a line of its own and doubled the
+            header's height. Search first (the frequent action), exports after.
+            On phones the search still spans the full width, exports below. */}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filtrar por activo o exchange…"
+            aria-label="Filtrar holdings por activo o exchange"
+            className="w-full rounded-lg border border-rule bg-paper px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand sm:w-64"
+          />
           <button
             type="button"
             onClick={() => exportHoldingsToCsv(rows, `holdings-${new Date().toISOString().slice(0, 10)}`)}
             disabled={rows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download size={14} strokeWidth={1.75} aria-hidden />
             CSV
@@ -79,18 +94,11 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
               exportHoldingsToExcel(rows, `holdings-${new Date().toISOString().slice(0, 10)}`)
             }
             disabled={rows.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-rule px-3 py-2 text-xs font-medium text-ink-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Download size={14} strokeWidth={1.75} aria-hidden />
             Excel
           </button>
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filtrar por activo o exchange…"
-            className="w-full max-w-64 rounded-lg border border-rule bg-paper px-3 py-2 text-sm placeholder:text-ink-muted focus-visible:outline-2 focus-visible:outline-brand"
-          />
         </div>
       </div>
 
@@ -99,35 +107,85 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
           Todavía no hay holdings registrados en este portfolio.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <>
+        {/* Below sm the six-column table needs 640px and hid Cantidad, Precio and
+            Registrado off-screen behind a scroll nobody could see. A stacked list
+            shows every field at 390px instead; same filtered/sorted rows. */}
+        <ul className="divide-y divide-rule text-sm sm:hidden" aria-label="Holdings">
+          {rows.length === 0 ? (
+            <li className="px-4 py-8 text-center text-ink-muted">
+              Ningún activo coincide con &ldquo;{query}&rdquo;.
+            </li>
+          ) : (
+            rows.map((h) => (
+              <li key={`${h.cryptoCurrencyId}-${h.exchangeId}`} className="flex flex-col gap-1 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <AssetAvatar holding={h} />
+                    <span className="font-medium">{h.cryptoCurrencySymbol}</span>
+                    <span className="truncate text-ink-muted">{h.cryptoCurrencyName}</span>
+                  </span>
+                  <span className="tabular shrink-0 font-semibold">{formatCurrency(h.value)}</span>
+                </div>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 pl-7 text-xs text-ink-muted">
+                  <span>
+                    {h.exchangeName} ·{" "}
+                    <span className="tabular">
+                      {formatQuantity(h.quantity)} × {formatCurrency(h.pricePerUnit)}
+                    </span>
+                  </span>
+                  <span>{formatDate(h.recordedAt)}</span>
+                </div>
+              </li>
+            ))
+          )}
+        </ul>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[640px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-rule-strong text-left text-xs tracking-wide text-ink-muted uppercase">
-                {SORT_COLUMNS.map((col) => (
-                  <th key={col.key} scope="col" className="px-4 py-2 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => toggleSort(col.key)}
-                      className="inline-flex items-center gap-1 hover:text-ink"
-                      aria-label={`Ordenar por ${col.label}`}
+                {SORT_COLUMNS.map((col) => {
+                  // The active column says which way it sorts: aria-sort for
+                  // screen readers, ↑/↓ and full-ink label for sight. Inactive
+                  // columns keep the faint ↕ as a "sortable" hint. The button is
+                  // named by the column title alone (WAI-ARIA sortable-table
+                  // pattern): an aria-label like "Ordenar por Activo" also became
+                  // the column header's name, read before every cell.
+                  const active = sortKey === col.key;
+                  const SortIcon = !active ? ArrowUpDown : sortDirection === "asc" ? ArrowUp : ArrowDown;
+                  return (
+                    <th
+                      key={col.key}
+                      scope="col"
+                      aria-sort={active ? (sortDirection === "asc" ? "ascending" : "descending") : undefined}
+                      className="px-3 py-2 font-medium"
                     >
-                      {col.label}
-                      <ArrowUpDown
-                        size={12}
-                        strokeWidth={1.75}
-                        aria-hidden
-                        className={sortKey === col.key ? "opacity-100" : "opacity-30"}
-                      />
-                    </button>
-                  </th>
-                ))}
-                <th scope="col" className="px-4 py-2 text-right font-medium">
+                      <button
+                        type="button"
+                        onClick={() => toggleSort(col.key, col.firstDirection)}
+                        // Chrome's UA sheet gives <button> text-transform: none, so
+                        // the row's `uppercase` never reached these three labels
+                        // ("Activo" next to "CANTIDAD"). Re-apply it on the button.
+                        className={`inline-flex items-center gap-1 uppercase hover:text-ink ${active ? "text-ink" : ""}`}
+                      >
+                        {col.label}
+                        <SortIcon
+                          size={12}
+                          strokeWidth={1.75}
+                          aria-hidden
+                          className={active ? "opacity-100" : "opacity-30"}
+                        />
+                      </button>
+                    </th>
+                  );
+                })}
+                <th scope="col" className="px-3 py-2 text-right font-medium">
                   Cantidad
                 </th>
-                <th scope="col" className="px-4 py-2 text-right font-medium">
+                <th scope="col" className="px-3 py-2 text-right font-medium">
                   Precio
                 </th>
-                <th scope="col" className="px-4 py-2 text-right font-medium">
+                <th scope="col" className="px-3 py-2 text-right font-medium">
                   Registrado
                 </th>
               </tr>
@@ -145,38 +203,27 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
                     key={`${h.cryptoCurrencyId}-${h.exchangeId}`}
                     className="border-b border-rule last:border-0 hover:bg-paper-raised"
                   >
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {h.cryptoCurrencyImage ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={h.cryptoCurrencyImage}
-                            alt=""
-                            aria-hidden
-                            className="size-5 shrink-0 rounded-full object-cover"
-                          />
-                        ) : (
-                          <span
-                            aria-hidden
-                            className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                            style={{ background: colorForKey(h.cryptoCurrencySymbol) }}
-                          >
-                            {h.cryptoCurrencySymbol.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
+                    {/* nowrap on the name and the date: at 1024px "Binance Coin" and
+                        "20 nov 2026" broke onto two lines and every row grew from
+                        41 to 61px. Cells use px-3 (not px-4) so the unwrapped row
+                        still fits the 736px panel at 1024px; a longer name falls
+                        back to the table's own horizontal scroll. */}
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <AssetAvatar holding={h} />
                         <span className="font-medium">{h.cryptoCurrencySymbol}</span>{" "}
                         <span className="text-ink-muted">{h.cryptoCurrencyName}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-ink-muted">{h.exchangeName}</td>
-                    <td className="tabular px-4 py-2.5 text-right">{formatCurrency(h.value)}</td>
-                    <td className="tabular px-4 py-2.5 text-right text-ink-muted">
+                    <td className="px-3 py-2.5 text-ink-muted">{h.exchangeName}</td>
+                    <td className="tabular px-3 py-2.5 text-right">{formatCurrency(h.value)}</td>
+                    <td className="tabular px-3 py-2.5 text-right text-ink-muted">
                       {formatQuantity(h.quantity)}
                     </td>
-                    <td className="tabular px-4 py-2.5 text-right text-ink-muted">
+                    <td className="tabular px-3 py-2.5 text-right text-ink-muted">
                       {formatCurrency(h.pricePerUnit)}
                     </td>
-                    <td className="px-4 py-2.5 text-right text-ink-muted">
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap text-ink-muted">
                       {formatDate(h.recordedAt)}
                     </td>
                   </tr>
@@ -185,7 +232,28 @@ export function HoldingsTable({ holdings }: HoldingsTableProps) {
             </tbody>
           </table>
         </div>
+        </>
       )}
     </section>
+  );
+}
+
+function AssetAvatar({ holding }: { holding: PortfolioHoldingItemResponse }) {
+  return holding.cryptoCurrencyImage ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={holding.cryptoCurrencyImage}
+      alt=""
+      aria-hidden
+      className="size-5 shrink-0 rounded-full object-cover"
+    />
+  ) : (
+    <span
+      aria-hidden
+      className="flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+      style={{ background: colorForKey(holding.cryptoCurrencySymbol) }}
+    >
+      {holding.cryptoCurrencySymbol.slice(0, 2).toUpperCase()}
+    </span>
   );
 }

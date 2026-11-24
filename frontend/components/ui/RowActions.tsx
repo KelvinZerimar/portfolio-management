@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { IconButton } from "./IconButton";
 
@@ -8,17 +8,20 @@ interface RowActionsProps {
   onEdit?: () => void;
   onDelete: () => void;
   deleting?: boolean;
+  /** Question shown while confirming. Rendered only then, so a component
+   *  passed here can fetch what it needs (e.g. how much would be lost) lazily. */
+  confirmMessage?: ReactNode;
 }
 
 // Inline delete confirmation instead of a modal — the task needs a moment of
 // protection, not an interruption. "Exhaust inline alternatives first."
-export function RowActions({ onEdit, onDelete, deleting }: RowActionsProps) {
+export function RowActions({ onEdit, onDelete, deleting, confirmMessage }: RowActionsProps) {
   const [confirming, setConfirming] = useState(false);
 
   if (confirming) {
     return (
-      <span className="inline-flex items-center gap-2 text-xs whitespace-nowrap">
-        ¿Eliminar?
+      <span className="inline-flex flex-wrap items-center justify-end gap-x-2 gap-y-1 text-xs">
+        {confirmMessage ?? <span className="whitespace-nowrap">¿Eliminar?</span>}
         <button
           type="button"
           onClick={onDelete}

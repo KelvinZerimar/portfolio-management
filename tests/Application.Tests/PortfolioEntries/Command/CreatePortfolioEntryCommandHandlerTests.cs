@@ -1,3 +1,4 @@
+using System.Reflection;
 using Application.Common.Security;
 using Application.CryptoCurrencies.Interfaces;
 using Application.Exchanges.Interfaces;
@@ -5,7 +6,9 @@ using Application.PortfolioEntries.Command;
 using Application.PortfolioEntries.Interfaces;
 using Application.Portfolios.Interfaces;
 using Contracts.PortfolioEntries;
+using Domain.Common;
 using Domain.Entities;
+using ErrorOr;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
@@ -72,6 +75,38 @@ public class CreatePortfolioEntryCommandHandlerTests
                 && e.Quantity == 2m),
             Arg.Any<CancellationToken>());
     }
+
+    [Fact]
+    public async Task Handle_WithEntryAtSameMomentForSameAssetAndExchange_ReturnsConflictWithoutCreating()
+    {
+        // Two entries for the same asset + exchange at the same RecordedAt tie in
+        // the valuation (latest RecordedAt wins, with no tie-break), so the second
+        // one is refused and points at the one that already exists.
+        var request = CreateRequest();
+        _portfolioRepository.GetByIdAsync(PortfolioId, Arg.Any<CancellationToken>())
+            .Returns(Portfolio.Create(UserId, "My Portfolio", string.Empty));
+        _cryptoCurrencyRepository.GetByIdAsync(CryptoCurrencyId, Arg.Any<CancellationToken>())
+            .Returns(CryptoCurrency.Create("BTC", "Bitcoin", "bitcoin"));
+        _exchangeRepository.GetByIdAsync(ExchangeId, Arg.Any<CancellationToken>())
+            .Returns(Exchange.Create("Binance", "api-key"));
+        var existing = PortfolioEntry.Create(PortfolioId, CryptoCurrencyId, ExchangeId, 1m, 90m, request.RecordedAt);
+        SetId(existing, 77);
+        _portfolioEntryRepository
+            .FindDuplicateAsync(PortfolioId, CryptoCurrencyId, ExchangeId, request.RecordedAt, null, Arg.Any<CancellationToken>())
+            .Returns(existing);
+
+        var result = await CreateHandler().Handle(new CreatePortfolioEntryCommand(request), CancellationToken.None);
+
+        result.IsError.Should().BeTrue();
+        result.FirstError.Type.Should().Be(ErrorType.Conflict);
+        result.FirstError.Code.Should().Be("PortfolioEntry.Duplicate");
+        result.FirstError.Metadata.Should().ContainKey("existingEntryId").WhoseValue.Should().Be(77L);
+        await _portfolioEntryRepository.DidNotReceive().AddAsync(Arg.Any<PortfolioEntry>(), Arg.Any<CancellationToken>());
+    }
+
+    private static void SetId(Entity entity, long id) =>
+        typeof(Entity).GetProperty(nameof(Entity.Id), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)!
+            .SetValue(entity, id);
 
     [Fact]
     public async Task Handle_WithNonExistentPortfolio_ReturnsNotFoundWithoutCheckingCryptoCurrencyOrExchange()
